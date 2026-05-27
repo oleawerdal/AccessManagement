@@ -134,6 +134,49 @@ eller markere en tilgang som «fortsatt nødvendig» (alt logges).
 
 Begge eksportene dekker alle tre visningene og logges som `EXPORT`.
 
+## Deploy (Docker / Coolify)
+
+Repoet inneholder en produksjonsklar `Dockerfile` (Next.js **standalone**) og et
+`docker-entrypoint.sh` som kjører `prisma migrate deploy` automatisk før serveren
+starter. Imaget bygges uten databasetilkobling (hele dashbordet er dynamisk).
+
+### Bygg og kjør med Docker lokalt
+
+```bash
+docker build -t tilgangsstyring .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://bruker:passord@host:5432/db" \
+  -e AUTH_SECRET="$(openssl rand -base64 32)" \
+  -e AUTH_URL="http://localhost:3000" \
+  -e AUTH_TRUST_HOST="true" \
+  tilgangsstyring
+```
+
+### Coolify
+
+1. **New Resource → Application** og velg Git-repoet (branch `claude/affectionate-turing-RWAHE`).
+2. **Build Pack: Dockerfile** (Coolify finner `Dockerfile` i rota).
+3. Legg til en **PostgreSQL**-database: **New Resource → Database → PostgreSQL**.
+   Bruk den interne connection-stringen som `DATABASE_URL`.
+4. Sett **Environment Variables** på applikasjonen:
+   - `DATABASE_URL` – peker på Coolify-Postgres
+   - `AUTH_SECRET` – `openssl rand -base64 32`
+   - `AUTH_URL` – appens offentlige URL (f.eks. `https://tilgang.example.com`)
+   - `AUTH_TRUST_HOST` – `true` (påkrevd bak Coolifys Traefik-proxy)
+5. **Port**: appen lytter på `3000` (`EXPOSE 3000`).
+6. Deploy. Entrypoint kjører `prisma migrate deploy` mot databasen ved hver start.
+
+> **Første admin-bruker:** seedingen kjøres _ikke_ automatisk i produksjon (og
+> krever dev-avhengigheter som ikke er med i runtime-imaget). Kjør seedingen én
+> gang fra en utsjekk av repoet mot produksjons-databasen:
+>
+> ```bash
+> DATABASE_URL="<prod-url>" npm run db:seed
+> ```
+>
+> Dette oppretter `admin@example.com` / `auditor@example.com` (samt demodata).
+> **Bytt passordene umiddelbart** under Innstillinger, og slett demodata ved behov.
+
 ## Microsoft Entra ID (SSO) – forberedt
 
 Credentials er hovedmetoden. Entra ID er forberedt i `lib/auth.ts` og aktiveres
