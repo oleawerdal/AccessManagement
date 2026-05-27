@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Pencil } from "lucide-react";
+import { Pencil, ShieldAlert } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,8 +23,22 @@ import {
 
 export default async function SettingsPage() {
   const session = await auth();
-  // AUDITOR has no access to admin-user management.
-  if (!canMutate(session?.user.role)) redirect("/dashboard");
+  // AUDITOR has no access to admin-user management — deny in place (the API
+  // enforces this too; the sidebar already hides this item for auditors).
+  if (!canMutate(session?.user.role)) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <h1 className="text-lg font-semibold">Ingen tilgang</h1>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+          Bare administratorer har tilgang til brukerinnstillinger. Du er logget
+          inn som revisor (lesetilgang).
+        </p>
+      </div>
+    );
+  }
 
   const users = await prisma.adminUser.findMany({
     orderBy: { name: "asc" },
