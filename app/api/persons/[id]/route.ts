@@ -7,6 +7,8 @@ import { personUpdateSchema } from "@/lib/validators";
 
 type Params = { params: { id: string } };
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_req: NextRequest, { params }: Params) {
   return withApi(async () => {
     const person = await prisma.person.findUniqueOrThrow({

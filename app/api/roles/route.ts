@@ -5,6 +5,8 @@ import { withApi } from "@/lib/api";
 import { assertCanMutate } from "@/lib/permissions";
 import { roleCreateSchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return withApi(async () => {
     const systemId = req.nextUrl.searchParams.get("systemId")?.trim();

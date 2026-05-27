@@ -5,6 +5,8 @@ import { withApi } from "@/lib/api";
 import { assertCanMutate } from "@/lib/permissions";
 import { groupCreateSchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return withApi(async () => {
     const groups = await prisma.group.findMany({

@@ -8,6 +8,8 @@ import { syncGroupMembers } from "@/lib/services/groups";
 
 type Params = { params: { id: string } };
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_req: NextRequest, { params }: Params) {
   return withApi(async () => {
     const group = await prisma.group.findUniqueOrThrow({

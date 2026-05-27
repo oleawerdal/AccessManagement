@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { withApi } from "@/lib/api";
 import { auditQuerySchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return withApi(async () => {
     const params = auditQuerySchema.parse(

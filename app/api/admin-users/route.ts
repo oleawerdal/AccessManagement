@@ -16,6 +16,8 @@ const SAFE_SELECT = {
   createdAt: true,
 } as const;
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return withApi(async () => {
     const users = await prisma.adminUser.findMany({

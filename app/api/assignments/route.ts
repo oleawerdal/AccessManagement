@@ -7,6 +7,8 @@ import { assertCanMutate } from "@/lib/permissions";
 import { assignmentCreateSchema } from "@/lib/validators";
 import { grantDirect, assignmentInclude } from "@/lib/services/assignments";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return withApi(async () => {
     const sp = req.nextUrl.searchParams;

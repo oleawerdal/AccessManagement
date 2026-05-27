@@ -5,6 +5,8 @@ import { withApi } from "@/lib/api";
 import { assertCanMutate } from "@/lib/permissions";
 import { systemCreateSchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return withApi(async () => {
     const systems = await prisma.system.findMany({

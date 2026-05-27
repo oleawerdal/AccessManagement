@@ -6,6 +6,8 @@ import { withApi } from "@/lib/api";
 import { assertCanMutate } from "@/lib/permissions";
 import { personCreateSchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return withApi(async () => {
     const sp = req.nextUrl.searchParams;
