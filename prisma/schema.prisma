@@ -1,0 +1,208 @@
+// Tilgangsstyring — Prisma schema
+// Data model for documenting who has which access in internal systems.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums -------------------------------------------------------------------
+
+enum AdminRole {
+  ADMIN
+  AUDITOR
+}
+
+enum EmploymentType {
+  EMPLOYEE // ansatt
+  CONSULTANT // konsulent
+  EXTERNAL // ekstern
+  INTERN // praktikant
+}
+
+enum RiskLevel {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum AssignmentSource {
+  DIRECT
+  GROUP
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  GRANT
+  REVOKE
+  LOGIN
+  LOGIN_FAILED
+  EXPORT
+}
+
+// --- Models ------------------------------------------------------------------
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Audit logs reference this admin, but we keep logs even if the admin is
+  // deleted (adminEmail is duplicated onto each log). Hence SetNull, not Cascade.
+  auditLogs AuditLog[] @relation("AuditLogAdmin")
+}
+
+model Person {
+  id             String         @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String         @unique
+  employeeId     String?        @unique
+  department     String?
+  jobTitle       String?
+  employmentType EmploymentType @default(EMPLOYEE)
+  startDate      DateTime?
+  endDate        DateTime?
+  active         Boolean        @default(true)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  assignments  RoleAssignment[]
+  memberships  GroupMembership[]
+
+  @@index([lastName, firstName])
+  @@index([active])
+}
+
+model System {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  category    String?
+  ownerEmail  String?
+  url         String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles Role[]
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  systemId    String
+  system      System    @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  riskLevel   RiskLevel @default(NORMAL)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignments RoleAssignment[]
+  groupRoles  GroupRole[]
+
+  @@unique([systemId, name])
+  @@index([systemId])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  groupRoles  GroupRole[]
+  memberships GroupMembership[]
+}
+
+model GroupRole {
+  id               String   @id @default(cuid())
+  groupId          String
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  roleId           String
+  role             Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  defaultExpiryDays Int?
+  createdAt        DateTime @default(now())
+
+  @@unique([groupId, roleId])
+  @@index([groupId])
+  @@index([roleId])
+}
+
+model GroupMembership {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  addedAt   DateTime @default(now())
+  addedBy   String?
+
+  @@unique([personId, groupId])
+  @@index([personId])
+  @@index([groupId])
+}
+
+model RoleAssignment {
+  id            String           @id @default(cuid())
+  personId      String
+  person        Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  roleId        String
+  role          Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  grantedAt     DateTime         @default(now())
+  grantedBy     String?
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  revokedBy     String?
+  revokeReason  String?
+  source        AssignmentSource @default(DIRECT)
+  sourceGroupId String?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Same role cannot be granted to the same person twice via the same source.
+  @@unique([personId, roleId, source])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([personId])
+  @@index([roleId])
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  timestamp   DateTime    @default(now())
+  adminUserId String?
+  adminUser   AdminUser?  @relation("AuditLogAdmin", fields: [adminUserId], references: [id], onDelete: SetNull)
+  // Duplicated so the log survives deletion of the admin user.
+  adminEmail  String
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  entityLabel String?
+  before      Json?
+  after       Json?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+
+  @@index([timestamp])
+  @@index([adminUserId])
+  @@index([entityType, entityId])
+  @@index([action])
+}
