@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tilgangsstyring-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tilgang
+      POSTGRES_PASSWORD: tilgang
+      POSTGRES_DB: tilgangsstyring
+    ports:
+      - "5432:5432"
+    volumes:
+      - tilgang-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tilgang -d tilgangsstyring"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tilgang-db-data:
