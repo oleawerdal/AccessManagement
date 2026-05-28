@@ -1,21 +1,59 @@
+# Full-stack Docker Compose: app + PostgreSQL.
+#
+# Local (full stack):   docker compose up --build
+# Local (DB only, for `npm run dev` on host):   docker compose up -d db
+# Coolify:              Build Pack = "Docker Compose". Set AUTH_SECRET, AUTH_URL
+#                       and (optional) BOOTSTRAP_ADMIN_* as environment variables,
+#                       then assign a domain to the `app` service.
+
 services:
   db:
     image: postgres:16-alpine
     container_name: tilgangsstyring-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: tilgang
-      POSTGRES_PASSWORD: tilgang
-      POSTGRES_DB: tilgangsstyring
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-tilgang}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tilgang}
+      POSTGRES_DB: ${POSTGRES_DB:-tilgangsstyring}
     volumes:
       - tilgang-db-data:/var/lib/postgresql/data
+    # Published for convenience during local development; harmless in Coolify.
+    ports:
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tilgang -d tilgangsstyring"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-tilgang} -d ${POSTGRES_DB:-tilgangsstyring}",
+        ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tilgangsstyring-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # The app always reaches the `db` service over the internal compose network.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tilgang}:${POSTGRES_PASSWORD:-tilgang}@db:5432/${POSTGRES_DB:-tilgangsstyring}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET (openssl rand -base64 32) in .env or Coolify}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
+      AUTH_ENTRA_ENABLED: ${AUTH_ENTRA_ENABLED:-false}
+      # Optional: create an initial ADMIN user on first boot (idempotent).
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Administrator}
+    expose:
+      - "3000"
+    ports:
+      - "${APP_PORT:-3000}:3000"
 
 volumes:
   tilgang-db-data:

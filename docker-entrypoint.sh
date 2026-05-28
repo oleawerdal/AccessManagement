@@ -17,5 +17,12 @@ fi
 echo "→ Applying database migrations (prisma migrate deploy)…"
 node node_modules/prisma/build/index.js migrate deploy
 
+# Optionally create an initial ADMIN user (no-op if BOOTSTRAP_ADMIN_* unset or
+# the user already exists).
+if [ -n "$BOOTSTRAP_ADMIN_EMAIL" ]; then
+  echo "→ Ensuring bootstrap admin user…"
+  node scripts/bootstrap-admin.mjs
+fi
+
 echo "→ Starting server…"
 exec "$@"

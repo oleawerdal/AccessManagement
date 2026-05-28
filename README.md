@@ -44,14 +44,18 @@ openssl rand -base64 32
 
 ### 4. Start database
 
+For lokal utvikling der du kjører appen på verten (`npm run dev`), start kun
+databasen:
+
 ```bash
-docker compose up -d
+docker compose up -d db
 ```
 
 Dette starter Postgres på `localhost:5432` med bruker/passord/database
 `tilgang` / `tilgang` / `tilgangsstyring` (samsvarer med `.env.example`).
 
-> Kjører du Postgres et annet sted, oppdater `DATABASE_URL` i `.env`.
+> Vil du kjøre _hele_ stacken (app + db) i Docker, se «Deploy» lenger ned:
+> `docker compose up --build`.
 
 ### 5. Migrer og seed
 
@@ -134,48 +138,44 @@ eller markere en tilgang som «fortsatt nødvendig» (alt logges).
 
 Begge eksportene dekker alle tre visningene og logges som `EXPORT`.
 
-## Deploy (Docker / Coolify)
+## Deploy (Docker Compose / Coolify)
 
-Repoet inneholder en produksjonsklar `Dockerfile` (Next.js **standalone**) og et
-`docker-entrypoint.sh` som kjører `prisma migrate deploy` automatisk før serveren
-starter. Imaget bygges uten databasetilkobling (hele dashbordet er dynamisk).
+`docker-compose.yml` definerer **hele stacken** – appen (bygget fra
+`Dockerfile`, Next.js standalone) og en PostgreSQL-database. Appen kobler seg
+automatisk på `db`-tjenesten, og `docker-entrypoint.sh` kjører
+`prisma migrate deploy` ved hver oppstart. Du trenger altså ikke sette opp en
+egen database manuelt.
 
-### Bygg og kjør med Docker lokalt
+### Kjør hele stacken lokalt
 
 ```bash
-docker build -t tilgangsstyring .
-docker run -p 3000:3000 \
-  -e DATABASE_URL="postgresql://bruker:passord@host:5432/db" \
-  -e AUTH_SECRET="$(openssl rand -base64 32)" \
-  -e AUTH_URL="http://localhost:3000" \
-  -e AUTH_TRUST_HOST="true" \
-  tilgangsstyring
+cp .env.example .env          # sett minst AUTH_SECRET
+docker compose up --build
 ```
+
+Appen blir tilgjengelig på <http://localhost:3000>.
 
 ### Coolify
 
-1. **New Resource → Application** og velg Git-repoet (branch `claude/affectionate-turing-RWAHE`).
-2. **Build Pack: Dockerfile** (Coolify finner `Dockerfile` i rota).
-3. Legg til en **PostgreSQL**-database: **New Resource → Database → PostgreSQL**.
-   Bruk den interne connection-stringen som `DATABASE_URL`.
-4. Sett **Environment Variables** på applikasjonen:
-   - `DATABASE_URL` – peker på Coolify-Postgres
-   - `AUTH_SECRET` – `openssl rand -base64 32`
+1. **New Resource → Application**, velg Git-repoet (branch `claude/affectionate-turing-RWAHE`).
+2. **Build Pack: Docker Compose** (Coolify bruker `docker-compose.yml` – både app og db reises).
+3. **Environment Variables** (Coolify fyller inn `${...}` fra compose):
+   - `AUTH_SECRET` – `openssl rand -base64 32` (påkrevd)
    - `AUTH_URL` – appens offentlige URL (f.eks. `https://tilgang.example.com`)
-   - `AUTH_TRUST_HOST` – `true` (påkrevd bak Coolifys Traefik-proxy)
-5. **Port**: appen lytter på `3000` (`EXPOSE 3000`).
-6. Deploy. Entrypoint kjører `prisma migrate deploy` mot databasen ved hver start.
+   - `POSTGRES_PASSWORD` – et sterkt passord (bytt fra default)
+   - _(valgfritt)_ `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSWORD` – se under
+4. **Domene**: sett domenet på `app`-tjenesten (port `3000`). `AUTH_TRUST_HOST`
+   er allerede satt til `true` i compose for Traefik-proxyen.
+5. Deploy. Databasen reises av compose, migreringene kjøres automatisk.
 
-> **Første admin-bruker:** seedingen kjøres _ikke_ automatisk i produksjon (og
-> krever dev-avhengigheter som ikke er med i runtime-imaget). Kjør seedingen én
-> gang fra en utsjekk av repoet mot produksjons-databasen:
+> **Første admin-bruker (anbefalt):** sett `BOOTSTRAP_ADMIN_EMAIL` og
+> `BOOTSTRAP_ADMIN_PASSWORD`. Ved første oppstart opprettes denne ADMIN-brukeren
+> automatisk (idempotent – hopper over hvis den finnes). Da har du en fungerende
+> innlogging uten å seede manuelt.
 >
-> ```bash
-> DATABASE_URL="<prod-url>" npm run db:seed
-> ```
->
-> Dette oppretter `admin@example.com` / `auditor@example.com` (samt demodata).
-> **Bytt passordene umiddelbart** under Innstillinger, og slett demodata ved behov.
+> **Alternativt** (med demodata) kan du kjøre seedingen én gang fra en lokal
+> utsjekk mot databasen: `DATABASE_URL="<url>" npm run db:seed` (krever
+> dev-avhengigheter, som ikke er med i runtime-imaget). Bytt passordene etterpå.
 
 ## Microsoft Entra ID (SSO) – forberedt
 
