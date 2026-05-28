@@ -1,10 +1,15 @@
 # Full-stack Docker Compose: app + PostgreSQL.
 #
+# This base file does NOT publish host ports — it is what Coolify uses, where
+# the built-in proxy (Traefik) routes your domain to the app's internal port.
+# For local development, docker-compose.override.yaml adds host port mappings
+# automatically (Coolify ignores it because it deploys with an explicit -f).
+#
 # Local (full stack):   docker compose up --build
 # Local (DB only, for `npm run dev` on host):   docker compose up -d db
 # Coolify:              Build Pack = "Docker Compose". Set AUTH_SECRET, AUTH_URL
 #                       and (optional) BOOTSTRAP_ADMIN_* as environment variables,
-#                       then assign a domain to the `app` service.
+#                       then assign a domain to the `app` service (port 3000).
 
 services:
   db:
@@ -17,9 +22,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-tilgangsstyring}
     volumes:
       - tilgang-db-data:/var/lib/postgresql/data
-    # Published for convenience during local development; harmless in Coolify.
-    ports:
-      - "${DB_PORT:-5432}:5432"
     healthcheck:
       test:
         [
@@ -50,10 +52,9 @@ services:
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Administrator}
+    # Internal port the app listens on; Coolify's proxy targets this.
     expose:
       - "3000"
-    ports:
-      - "${APP_PORT:-3000}:3000"
 
 volumes:
   tilgang-db-data:

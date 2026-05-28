@@ -1,0 +1,15 @@
+# Local development overrides — auto-merged by `docker compose` when you run it
+# from this directory WITHOUT an explicit -f. Publishes host ports so the app
+# and database are reachable on localhost.
+#
+# Coolify deploys with an explicit `-f docker-compose.yaml`, so it does NOT load
+# this file — that's why no host ports are published in production (avoids the
+# "port is already allocated" conflict with Coolify's proxy).
+
+services:
+  db:
+    ports:
+      - "${DB_PORT:-5432}:5432"
+  app:
+    ports:
+      - "${APP_PORT:-3000}:3000"
