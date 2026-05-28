@@ -140,7 +140,7 @@ Begge eksportene dekker alle tre visningene og logges som `EXPORT`.
 
 ## Deploy (Docker Compose / Coolify)
 
-`docker-compose.yml` definerer **hele stacken** – appen (bygget fra
+`docker-compose.yaml` definerer **hele stacken** – appen (bygget fra
 `Dockerfile`, Next.js standalone) og en PostgreSQL-database. Appen kobler seg
 automatisk på `db`-tjenesten, og `docker-entrypoint.sh` kjører
 `prisma migrate deploy` ved hver oppstart. Du trenger altså ikke sette opp en
@@ -158,7 +158,7 @@ Appen blir tilgjengelig på <http://localhost:3000>.
 ### Coolify
 
 1. **New Resource → Application**, velg Git-repoet (branch `claude/affectionate-turing-RWAHE`).
-2. **Build Pack: Docker Compose** (Coolify bruker `docker-compose.yml` – både app og db reises).
+2. **Build Pack: Docker Compose** (Coolify bruker `docker-compose.yaml` – både app og db reises).
 3. **Environment Variables** (Coolify fyller inn `${...}` fra compose):
    - `AUTH_SECRET` – `openssl rand -base64 32` (påkrevd)
    - `AUTH_URL` – appens offentlige URL (f.eks. `https://tilgang.example.com`)
