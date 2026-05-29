@@ -184,6 +184,26 @@ model RoleAssignment {
   @@index([roleId])
 }
 
+// Machine-to-machine credentials for the external REST API (/api/v1). The full
+// token is shown to the operator once at creation and never stored; only a
+// SHA-256 hash is kept. `prefix` is a short, non-secret identifier so a key can
+// be recognised in the UI and logs without revealing the secret.
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  prefix     String    @unique
+  keyHash    String    @unique
+  role       AdminRole @default(ADMIN)
+  active     Boolean   @default(true)
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([active])
+}
+
 model AuditLog {
   id          String      @id @default(cuid())
   timestamp   DateTime    @default(now())
