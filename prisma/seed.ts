@@ -64,33 +64,52 @@ async function main() {
     },
   });
 
-  const m365Roles: { name: string; riskLevel: Prisma.RoleCreateInput["riskLevel"]; description: string }[] = [
-    { name: "Global Administrator", riskLevel: "CRITICAL", description: "Full administrativ tilgang til hele tenanten." },
-    { name: "Exchange Administrator", riskLevel: "HIGH", description: "Administrasjon av e-post og Exchange Online." },
-    { name: "SharePoint Administrator", riskLevel: "HIGH", description: "Administrasjon av SharePoint og OneDrive." },
-    { name: "Standard bruker", riskLevel: "NORMAL", description: "Ordinær lisensiert sluttbruker." },
-    { name: "Gjest", riskLevel: "LOW", description: "Ekstern gjestebruker med begrenset tilgang." },
+  // --- Risk levels (configurable) -------------------------------------------
+  const riskLevelDefs = [
+    { id: "risk_low", key: "LOW", label: "Lav", color: "#64748b", severity: 1, description: "Begrenset tilgang med liten risiko ved misbruk." },
+    { id: "risk_normal", key: "NORMAL", label: "Normal", color: "#3b82f6", severity: 2, description: "Ordinær brukertilgang." },
+    { id: "risk_high", key: "HIGH", label: "Høy", color: "#f59e0b", severity: 3, description: "Utvidet tilgang som krever ekstra oppfølging." },
+    { id: "risk_critical", key: "CRITICAL", label: "Kritisk", color: "#ef4444", severity: 4, description: "Full eller administrativ tilgang med høy risiko." },
+  ] as const;
+
+  const riskId: Record<string, string> = {};
+  for (const d of riskLevelDefs) {
+    const lvl = await prisma.riskLevel.upsert({
+      where: { label: d.label },
+      update: { color: d.color, severity: d.severity, description: d.description },
+      create: { id: d.id, label: d.label, color: d.color, severity: d.severity, description: d.description },
+    });
+    riskId[d.key] = lvl.id;
+  }
+
+  type RoleDef = { name: string; risk: "LOW" | "NORMAL" | "HIGH" | "CRITICAL"; description: string };
+  const m365Roles: RoleDef[] = [
+    { name: "Global Administrator", risk: "CRITICAL", description: "Full administrativ tilgang til hele tenanten." },
+    { name: "Exchange Administrator", risk: "HIGH", description: "Administrasjon av e-post og Exchange Online." },
+    { name: "SharePoint Administrator", risk: "HIGH", description: "Administrasjon av SharePoint og OneDrive." },
+    { name: "Standard bruker", risk: "NORMAL", description: "Ordinær lisensiert sluttbruker." },
+    { name: "Gjest", risk: "LOW", description: "Ekstern gjestebruker med begrenset tilgang." },
   ];
 
-  const salesforceRoles: { name: string; riskLevel: Prisma.RoleCreateInput["riskLevel"]; description: string }[] = [
-    { name: "System Administrator", riskLevel: "CRITICAL", description: "Full konfigurasjons- og datatilgang." },
-    { name: "Sales Manager", riskLevel: "HIGH", description: "Leder med innsyn i hele salgsteamet." },
-    { name: "Sales User", riskLevel: "NORMAL", description: "Selger med tilgang til egne kunder og leads." },
-    { name: "Read Only", riskLevel: "LOW", description: "Kun lesetilgang til CRM-data." },
+  const salesforceRoles: RoleDef[] = [
+    { name: "System Administrator", risk: "CRITICAL", description: "Full konfigurasjons- og datatilgang." },
+    { name: "Sales Manager", risk: "HIGH", description: "Leder med innsyn i hele salgsteamet." },
+    { name: "Sales User", risk: "NORMAL", description: "Selger med tilgang til egne kunder og leads." },
+    { name: "Read Only", risk: "LOW", description: "Kun lesetilgang til CRM-data." },
   ];
 
   for (const r of m365Roles) {
     await prisma.role.upsert({
       where: { systemId_name: { systemId: m365.id, name: r.name } },
-      update: { riskLevel: r.riskLevel, description: r.description },
-      create: { systemId: m365.id, ...r },
+      update: { riskLevelId: riskId[r.risk], description: r.description },
+      create: { systemId: m365.id, name: r.name, description: r.description, riskLevelId: riskId[r.risk] },
     });
   }
   for (const r of salesforceRoles) {
     await prisma.role.upsert({
       where: { systemId_name: { systemId: salesforce.id, name: r.name } },
-      update: { riskLevel: r.riskLevel, description: r.description },
-      create: { systemId: salesforce.id, ...r },
+      update: { riskLevelId: riskId[r.risk], description: r.description },
+      create: { systemId: salesforce.id, name: r.name, description: r.description, riskLevelId: riskId[r.risk] },
     });
   }
 

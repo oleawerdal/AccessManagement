@@ -78,28 +78,59 @@ export function serializeSystem(s: System): SystemDTO {
   };
 }
 
+export type RiskLevelDTO = {
+  id: string;
+  label: string;
+  description: string | null;
+  color: string;
+  severity: number;
+};
+
 export type RoleDTO = {
   id: string;
   systemId: string;
   name: string;
   description: string | null;
-  riskLevel: Role["riskLevel"];
+  riskLevelId: string;
+  riskLevel?: RiskLevelDTO;
   createdAt: string;
   updatedAt: string;
   system?: { id: string; name: string };
 };
 
+type RiskLevelRecord = {
+  id: string;
+  label: string;
+  description: string | null;
+  color: string;
+  severity: number;
+};
+
+export function serializeRiskLevel(r: RiskLevelRecord): RiskLevelDTO {
+  return {
+    id: r.id,
+    label: r.label,
+    description: r.description,
+    color: r.color,
+    severity: r.severity,
+  };
+}
+
 export function serializeRole(
-  r: Role & { system?: { id: string; name: string } },
+  r: Role & {
+    system?: { id: string; name: string };
+    riskLevel?: RiskLevelRecord;
+  },
 ): RoleDTO {
   return {
     id: r.id,
     systemId: r.systemId,
     name: r.name,
     description: r.description,
-    riskLevel: r.riskLevel,
+    riskLevelId: r.riskLevelId,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+    ...(r.riskLevel ? { riskLevel: serializeRiskLevel(r.riskLevel) } : {}),
     ...(r.system ? { system: { id: r.system.id, name: r.system.name } } : {}),
   };
 }

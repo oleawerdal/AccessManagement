@@ -11,6 +11,7 @@ import { AdminUserFormDialog } from "@/components/forms/admin-user-form";
 import { ApiKeyFormDialog } from "@/components/forms/api-key-form";
 import { SmtpSettingsForm } from "@/components/forms/smtp-settings-form";
 import { SsoSettingsForm } from "@/components/forms/sso-settings-form";
+import { RiskLevelsManager } from "@/components/forms/risk-levels-manager";
 import { SendPasswordLinkButton } from "@/components/settings/send-password-link-button";
 import { DeleteButton } from "@/components/common/delete-button";
 import { Button } from "@/components/ui/button";
@@ -282,6 +283,19 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <SmtpSettingsForm />
+        </CardContent>
+      </Card>
+
+      <div className="pt-2">
+        <h2 className="text-base font-semibold">Risikonivåer</h2>
+        <p className="text-sm text-muted-foreground">
+          Nivåene som kan velges på roller. Endre navn, farge, rang og
+          beskrivelse.
+        </p>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <RiskLevelsManager />
         </CardContent>
       </Card>
 

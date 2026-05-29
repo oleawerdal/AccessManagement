@@ -119,6 +119,13 @@ innholds­modeller, og av eksplisitte hjelpere for `GRANT`/`REVOKE`/`LOGIN`/
 `LOGIN_FAILED`/`EXPORT`. Loggen kan ikke endres eller slettes via UI eller API.
 Se `docs/ARCHITECTURE.md` for detaljer.
 
+### Risikonivåer
+
+Hver rolle har et risikonivå. Nivåene er konfigurerbare under **Innstillinger →
+Risikonivåer**: admin kan legge til, endre og fjerne nivåer med eget navn,
+farge, rang (alvorlighet) og beskrivelse. Et nivå som er i bruk av roller kan
+ikke slettes. Standardoppsettet er Lav/Normal/Høy/Kritisk.
+
 ### Utløp og fargekoder
 
 - **Grønn** – gyldig, mer enn 30 dager igjen

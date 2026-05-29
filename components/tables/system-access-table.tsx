@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { RiskLevel, AssignmentSource } from "@prisma/client";
 import { Pencil } from "lucide-react";
+// RiskLevel is now a model; we use its label/color/description for the badge.
 
 import { assignmentSourceLabel } from "@/lib/labels";
 import { RiskBadge } from "@/components/badges/risk-badge";
@@ -13,6 +14,7 @@ type RoleWithPeople = {
   id: string;
   name: string;
   description: string | null;
+  riskLevelId: string;
   riskLevel: RiskLevel;
   systemId: string;
   createdAt: Date;

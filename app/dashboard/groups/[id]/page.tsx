@@ -23,7 +23,9 @@ export default async function GroupDetailPage({
   const group = await prisma.group.findUnique({
     where: { id: params.id },
     include: {
-      groupRoles: { include: { role: { include: { system: true } } } },
+      groupRoles: {
+        include: { role: { include: { system: true, riskLevel: true } } },
+      },
       memberships: { include: { person: true }, orderBy: { addedAt: "desc" } },
     },
   });

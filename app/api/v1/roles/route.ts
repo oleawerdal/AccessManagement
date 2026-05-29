@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       prisma.role.findMany({
         where,
         orderBy: [{ system: { name: "asc" } }, { name: "asc" }],
-        include: { system: { select: { id: true, name: true } } },
+        include: { system: { select: { id: true, name: true } }, riskLevel: true },
         skip: pagination.skip,
         take: pagination.take,
       }),
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const data = roleCreateSchema.parse(await req.json());
     const created = await prisma.role.create({
       data,
-      include: { system: { select: { id: true, name: true } } },
+      include: { system: { select: { id: true, name: true } }, riskLevel: true },
     });
     return NextResponse.json(serializeRole(created), { status: 201 });
   });

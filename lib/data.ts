@@ -39,7 +39,7 @@ export async function getDashboardData() {
       where: { revokedAt: null, expiresAt: { lt: now } },
       include: {
         person: true,
-        role: { include: { system: true } },
+        role: { include: { system: true, riskLevel: true } },
       },
       orderBy: { expiresAt: "asc" },
     }),
@@ -76,7 +76,9 @@ export async function getMatrixData() {
     prisma.system.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
-      include: { roles: { orderBy: { name: "asc" } } },
+      include: {
+        roles: { orderBy: { name: "asc" }, include: { riskLevel: true } },
+      },
     }),
     prisma.person.findMany({
       where: { active: true },
@@ -124,7 +126,7 @@ export async function getPersonWithAccess(id: string) {
     where: { id },
     include: {
       assignments: {
-        include: { role: { include: { system: true } } },
+        include: { role: { include: { system: true, riskLevel: true } } },
         orderBy: [{ role: { system: { name: "asc" } } }, { grantedAt: "desc" }],
       },
       memberships: { include: { group: true }, orderBy: { addedAt: "desc" } },
@@ -142,6 +144,7 @@ export async function getSystemWithAccess(id: string) {
       roles: {
         orderBy: { name: "asc" },
         include: {
+          riskLevel: true,
           assignments: {
             where: { revokedAt: null },
             include: { person: true },

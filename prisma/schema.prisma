@@ -24,13 +24,6 @@ enum EmploymentType {
   INTERN // praktikant
 }
 
-enum RiskLevel {
-  LOW
-  NORMAL
-  HIGH
-  CRITICAL
-}
-
 enum AssignmentSource {
   DIRECT
   GROUP
@@ -116,7 +109,8 @@ model Role {
   system      System    @relation(fields: [systemId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  riskLevel   RiskLevel @default(NORMAL)
+  riskLevelId String
+  riskLevel   RiskLevel @relation(fields: [riskLevelId], references: [id], onDelete: Restrict)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -125,6 +119,24 @@ model Role {
 
   @@unique([systemId, name])
   @@index([systemId])
+  @@index([riskLevelId])
+}
+
+// Configurable risk levels (Settings). Replaces the former fixed enum so
+// admins can add/edit/remove levels with their own label, colour and
+// description. `severity` orders them (higher = riskier).
+model RiskLevel {
+  id          String   @id @default(cuid())
+  label       String   @unique
+  description String?
+  color       String   @default("#64748b")
+  severity    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles Role[]
+
+  @@index([severity])
 }
 
 model Group {

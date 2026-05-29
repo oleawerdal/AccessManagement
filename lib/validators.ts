@@ -76,16 +76,27 @@ export const systemUpdateSchema = systemCreateSchema.partial();
 export type SystemInput = z.infer<typeof systemCreateSchema>;
 
 // --- Role ----------------------------------------------------------------
-export const riskLevelEnum = z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]);
-
 export const roleCreateSchema = z.object({
   systemId: z.string().min(1, "System er påkrevd."),
   name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
   description: optionalString,
-  riskLevel: riskLevelEnum.default("NORMAL"),
+  riskLevelId: z.string().min(1, "Risikonivå er påkrevd."),
 });
 export const roleUpdateSchema = roleCreateSchema.partial().omit({ systemId: true });
 export type RoleInput = z.infer<typeof roleCreateSchema>;
+
+// --- Risk levels (configurable) -----------------------------------------
+const hexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Bruk en hex-farge, f.eks. #3b82f6");
+
+export const riskLevelCreateSchema = z.object({
+  label: z.string().trim().min(1, "Navn er påkrevd.").max(100),
+  description: optionalString,
+  color: hexColor.default("#64748b"),
+  severity: z.coerce.number().int().min(0).max(1000).default(0),
+});
+export const riskLevelUpdateSchema = riskLevelCreateSchema.partial();
 
 // --- Group ---------------------------------------------------------------
 export const groupRoleInputSchema = z.object({

@@ -10,11 +10,6 @@ const employmentType = {
   enum: ["EMPLOYEE", "CONSULTANT", "EXTERNAL", "INTERN"],
 } as const;
 
-const riskLevel = {
-  type: "string",
-  enum: ["LOW", "NORMAL", "HIGH", "CRITICAL"],
-} as const;
-
 const role = {
   type: "string",
   enum: ["ADMIN", "AUDITOR"],
@@ -552,6 +547,16 @@ export const openApiDocument = {
           active: { type: "boolean" },
         },
       },
+      RiskLevel: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          description: nullableString,
+          color: { type: "string", example: "#3b82f6" },
+          severity: { type: "integer" },
+        },
+      },
       Role: {
         type: "object",
         properties: {
@@ -559,7 +564,8 @@ export const openApiDocument = {
           systemId: { type: "string" },
           name: { type: "string" },
           description: nullableString,
-          riskLevel,
+          riskLevelId: { type: "string" },
+          riskLevel: { $ref: "#/components/schemas/RiskLevel" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
           system: {
@@ -573,12 +579,12 @@ export const openApiDocument = {
       },
       RoleInput: {
         type: "object",
-        required: ["systemId", "name"],
+        required: ["systemId", "name", "riskLevelId"],
         properties: {
           systemId: { type: "string" },
           name: { type: "string" },
           description: { type: "string" },
-          riskLevel,
+          riskLevelId: { type: "string" },
         },
       },
       RoleUpdate: {
@@ -587,7 +593,7 @@ export const openApiDocument = {
         properties: {
           name: { type: "string" },
           description: { type: "string" },
-          riskLevel,
+          riskLevelId: { type: "string" },
         },
       },
       Assignment: {
