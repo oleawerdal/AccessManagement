@@ -215,17 +215,24 @@ e-post som ikke finnes – eller en deaktivert konto – avvises de. Rollen
 
 ### Aktivering
 
-1. Registrer en app i Entra (Azure) og legg til redirect-URI:
-   `<AUTH_URL>/api/auth/callback/microsoft-entra-id`
-2. Sett miljøvariablene (lokalt i `.env`, eller i Coolify):
-   - `AUTH_ENTRA_ENABLED=true`
-   - `AUTH_MICROSOFT_ENTRA_ID_ID` – Application (client) ID
-   - `AUTH_MICROSOFT_ENTRA_ID_SECRET` – client secret
-   - `AUTH_MICROSOFT_ENTRA_ID_ISSUER` – f.eks.
-     `https://login.microsoftonline.com/<tenant-id>/v2.0`
-3. Opprett adminbrukerne med deres Entra-e-post under Innstillinger.
+Registrer først en app i Entra (Azure) med redirect-URI
+`<AUTH_URL>/api/auth/callback/microsoft-entra-id`, og opprett adminbrukerne med
+deres Entra-e-post under Innstillinger.
 
-`docker-compose.yaml` sender disse variablene videre til app-containeren.
+Deretter kan SSO konfigureres på to måter:
+
+- **I appen (anbefalt):** Innstillinger → **Single sign-on (SSO)**. Huk av
+  «Aktiver», lim inn Application (client) ID, client secret og issuer-URL, og
+  lagre. Verdiene lagres i databasen (client secret vises aldri tilbake), og
+  endringer slår inn uten redeploy (innen ~30 s). Redirect-URI-en vises i
+  skjemaet.
+- **Via miljøvariabler** (fallback hvis ingenting er satt i UI):
+  `AUTH_ENTRA_ENABLED=true`, `AUTH_MICROSOFT_ENTRA_ID_ID`,
+  `AUTH_MICROSOFT_ENTRA_ID_SECRET`, `AUTH_MICROSOFT_ENTRA_ID_ISSUER` (f.eks.
+  `https://login.microsoftonline.com/<tenant-id>/v2.0`). `docker-compose.yaml`
+  sender disse videre til app-containeren.
+
+Databaseinnstillingene har forrang over miljøvariablene.
 
 ## Kjente begrensninger
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { isEntraEnabled } from "@/lib/sso-config";
 import { LoginForm } from "@/components/forms/login-form";
 import { entraSignInAction } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ export default async function LoginPage() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const entraEnabled = process.env.AUTH_ENTRA_ENABLED === "true";
+  const entraEnabled = await isEntraEnabled();
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
