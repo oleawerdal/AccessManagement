@@ -225,6 +225,19 @@ model SmtpSettings {
   updatedAt DateTime @updatedAt
 }
 
+// Single sign-on (Microsoft Entra ID) configuration, editable in Settings.
+// Single-row table (fixed id "default"). `clientSecret` is write-only — never
+// returned to the client. Takes precedence over the AUTH_ENTRA_* env vars.
+model SsoSettings {
+  id           String   @id @default("default")
+  enabled      Boolean  @default(false)
+  clientId     String?
+  clientSecret String?
+  issuer       String?
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
+}
+
 // Single-use, hashed tokens for the "set / reset password" e-mail flow.
 model PasswordResetToken {
   id          String    @id @default(cuid())

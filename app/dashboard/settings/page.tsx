@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AdminUserFormDialog } from "@/components/forms/admin-user-form";
 import { ApiKeyFormDialog } from "@/components/forms/api-key-form";
 import { SmtpSettingsForm } from "@/components/forms/smtp-settings-form";
+import { SsoSettingsForm } from "@/components/forms/sso-settings-form";
 import { SendPasswordLinkButton } from "@/components/settings/send-password-link-button";
 import { DeleteButton } from "@/components/common/delete-button";
 import { Button } from "@/components/ui/button";
@@ -281,6 +282,21 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <SmtpSettingsForm />
+        </CardContent>
+      </Card>
+
+      <div className="pt-2">
+        <h2 className="text-base font-semibold">Single sign-on (SSO)</h2>
+        <p className="text-sm text-muted-foreground">
+          Innlogging med Microsoft Entra ID.
+        </p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Microsoft Entra ID</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SsoSettingsForm />
         </CardContent>
       </Card>
     </div>

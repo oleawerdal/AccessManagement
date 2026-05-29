@@ -204,6 +204,19 @@ export const smtpSettingsSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
+// --- SSO (Microsoft Entra ID) settings -----------------------------------
+export const ssoSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  clientId: optionalString,
+  // Empty/omitted on update keeps the stored secret.
+  clientSecret: z.string().max(500).optional(),
+  issuer: z
+    .string()
+    .url("Ugyldig issuer-URL.")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});
+
 // --- Password reset ------------------------------------------------------
 export const passwordResetRequestSchema = z.object({
   email: z.string().email("Ugyldig e-postadresse."),
