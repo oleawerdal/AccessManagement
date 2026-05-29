@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertCircle } from "lucide-react";
 
@@ -38,7 +39,15 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Passord</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Passord</Label>
+          <Link
+            href="/forgot-password"
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Glemt passord?
+          </Link>
+        </div>
         <Input
           id="password"
           name="password"

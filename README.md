@@ -177,6 +177,30 @@ Appen blir tilgjengelig på <http://localhost:3000>.
 > utsjekk mot databasen: `DATABASE_URL="<url>" npm run db:seed` (krever
 > dev-avhengigheter, som ikke er med i runtime-imaget). Bytt passordene etterpå.
 
+## E-post og varsler
+
+Utgående e-post (f.eks. **SMTP2GO**) konfigureres i appen under **Innstillinger →
+E-post (SMTP)** – vert, port, brukernavn/passord, avsendernavn og -adresse.
+Innstillingene lagres i databasen (passordet vises aldri tilbake til klienten).
+Bruk «Send test-e-post» for å verifisere oppsettet.
+
+E-post brukes til:
+
+- **Utløpsvarsler:** når en tilgang utløper, varsles systemeieren og alle
+  aktive admins (én gang per tilgang). Dette kjøres av et beskyttet endepunkt:
+
+  ```bash
+  curl -X POST https://<din-url>/api/cron/expiry-reminders \
+    -H "Authorization: Bearer $CRON_SECRET"
+  ```
+
+  Sett `CRON_SECRET` og kall endepunktet fra en planlagt jobb (f.eks. en daglig
+  Coolify scheduled task eller ekstern cron).
+
+- **Passord-lenker:** admins kan sende en «sett/tilbakestill passord»-lenke til
+  en bruker fra Innstillinger, og brukere kan be om tilbakestilling selv via
+  «Glemt passord?» på innloggingssiden. Lenkene er engangs og varer i 24 timer.
+
 ## Microsoft Entra ID (SSO)
 
 Credentials (e-post/passord) er hovedmetoden. I tillegg kan **Microsoft Entra

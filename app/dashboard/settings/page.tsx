@@ -9,10 +9,12 @@ import { adminRoleLabel } from "@/lib/labels";
 import { PageHeader } from "@/components/layout/page-header";
 import { AdminUserFormDialog } from "@/components/forms/admin-user-form";
 import { ApiKeyFormDialog } from "@/components/forms/api-key-form";
+import { SmtpSettingsForm } from "@/components/forms/smtp-settings-form";
+import { SendPasswordLinkButton } from "@/components/settings/send-password-link-button";
 import { DeleteButton } from "@/components/common/delete-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -116,6 +118,7 @@ export default async function SettingsPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1">
+                    <SendPasswordLinkButton userId={u.id} />
                     <AdminUserFormDialog
                       user={u}
                       trigger={
@@ -264,6 +267,21 @@ export default async function SettingsPage() {
             )}
           </TableBody>
         </Table>
+      </Card>
+
+      <div className="pt-2">
+        <h2 className="text-base font-semibold">E-post (SMTP)</h2>
+        <p className="text-sm text-muted-foreground">
+          Brukes til utløpsvarsler og passord-lenker. F.eks. SMTP2GO.
+        </p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Utgående e-post</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SmtpSettingsForm />
+        </CardContent>
       </Card>
     </div>
   );

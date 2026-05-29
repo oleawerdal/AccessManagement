@@ -70,5 +70,6 @@ export const entityTypeLabel: Record<string, string> = {
   RoleAssignment: "Tilordning",
   AdminUser: "Adminbruker",
   ApiKey: "API-nøkkel",
+  SmtpSettings: "SMTP-innstillinger",
   Export: "Eksport",
 };

@@ -190,3 +190,25 @@ export const apiKeyUpdateSchema = z.object({
       message: "Ugyldig dato.",
     }),
 });
+
+// --- SMTP settings -------------------------------------------------------
+export const smtpSettingsSchema = z.object({
+  host: z.string().trim().min(1, "Vert er påkrevd.").max(255),
+  port: z.coerce.number().int().min(1).max(65535).default(587),
+  secure: z.boolean().default(false),
+  username: optionalString,
+  // Empty/omitted on update keeps the stored password.
+  password: z.string().max(500).optional(),
+  fromEmail: z.string().email("Ugyldig avsenderadresse."),
+  fromName: z.string().trim().min(1, "Avsendernavn er påkrevd.").max(150),
+  enabled: z.boolean().default(false),
+});
+
+// --- Password reset ------------------------------------------------------
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email("Ugyldig e-postadresse."),
+});
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(1, "Mangler token."),
+  password: z.string().min(8, "Minst 8 tegn."),
+});
