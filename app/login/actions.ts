@@ -60,3 +60,9 @@ export async function loginAction(
 
   redirect("/dashboard");
 }
+
+// Kicks off the Microsoft Entra ID OAuth flow. The signIn callback in
+// lib/auth.ts gates access to pre-provisioned, active admin users.
+export async function entraSignInAction() {
+  await signIn("microsoft-entra-id", { redirectTo: "/dashboard" });
+}

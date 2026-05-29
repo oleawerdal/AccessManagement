@@ -177,11 +177,31 @@ Appen blir tilgjengelig på <http://localhost:3000>.
 > utsjekk mot databasen: `DATABASE_URL="<url>" npm run db:seed` (krever
 > dev-avhengigheter, som ikke er med i runtime-imaget). Bytt passordene etterpå.
 
-## Microsoft Entra ID (SSO) – forberedt
+## Microsoft Entra ID (SSO)
 
-Credentials er hovedmetoden. Entra ID er forberedt i `lib/auth.ts` og aktiveres
-ved å sette `AUTH_ENTRA_ENABLED=true` og fylle inn `AUTH_MICROSOFT_ENTRA_ID_*`
-i `.env`.
+Credentials (e-post/passord) er hovedmetoden. I tillegg kan **Microsoft Entra
+ID** brukes som single sign-on. Når det er aktivert vises en «Logg inn med
+Microsoft»-knapp på innloggingssiden.
+
+**Tilgangsmodell – kun forhåndsopprettede brukere:** SSO oppretter aldri nye
+kontoer. En admin må først opprette adminbrukeren (med riktig rolle) under
+**Innstillinger**, med samme e-post som i Entra. Logger noen inn via Entra med en
+e-post som ikke finnes – eller en deaktivert konto – avvises de. Rollen
+(`ADMIN`/`AUDITOR`) hentes fra adminbrukeren, ikke fra Entra.
+
+### Aktivering
+
+1. Registrer en app i Entra (Azure) og legg til redirect-URI:
+   `<AUTH_URL>/api/auth/callback/microsoft-entra-id`
+2. Sett miljøvariablene (lokalt i `.env`, eller i Coolify):
+   - `AUTH_ENTRA_ENABLED=true`
+   - `AUTH_MICROSOFT_ENTRA_ID_ID` – Application (client) ID
+   - `AUTH_MICROSOFT_ENTRA_ID_SECRET` – client secret
+   - `AUTH_MICROSOFT_ENTRA_ID_ISSUER` – f.eks.
+     `https://login.microsoftonline.com/<tenant-id>/v2.0`
+3. Opprett adminbrukerne med deres Entra-e-post under Innstillinger.
+
+`docker-compose.yaml` sender disse variablene videre til app-containeren.
 
 ## Kjente begrensninger
 
