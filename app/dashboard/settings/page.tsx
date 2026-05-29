@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Pencil, ShieldAlert } from "lucide-react";
+import { Pencil, ShieldAlert, FileText } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -151,7 +151,17 @@ export default async function SettingsPage() {
             For eksterne integrasjoner mot REST-API-et (<code>/api/v1</code>).
           </p>
         </div>
-        <ApiKeyFormDialog />
+        <div className="flex items-center gap-3">
+          <a
+            href="/api/v1/docs"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <FileText className="h-4 w-4" /> API-dokumentasjon
+          </a>
+          <ApiKeyFormDialog />
+        </div>
       </div>
 
       <Card>
