@@ -37,7 +37,16 @@ export async function POST(req: NextRequest) {
     include: {
       person: { select: { firstName: true, lastName: true, email: true } },
       role: {
-        select: { name: true, system: { select: { name: true, ownerEmail: true } } },
+        select: {
+          name: true,
+          system: {
+            select: {
+              name: true,
+              ownerEmail: true,
+              ownerPerson: { select: { email: true } },
+            },
+          },
+        },
       },
     },
   });
@@ -57,7 +66,9 @@ export async function POST(req: NextRequest) {
   // Per-owner buckets (owners only see their own systems' expirations).
   const byOwner = new Map<string, ExpiredItem[]>();
   expired.forEach((a, i) => {
-    const owner = a.role.system.ownerEmail?.trim();
+    const owner =
+      a.role.system.ownerPerson?.email?.trim() ||
+      a.role.system.ownerEmail?.trim();
     if (owner) {
       (byOwner.get(owner) ?? byOwner.set(owner, []).get(owner)!).push(items[i]);
     }

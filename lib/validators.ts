@@ -58,6 +58,13 @@ export const systemCreateSchema = z.object({
     .email("Ugyldig e-postadresse.")
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  // Person who owns the system. null clears it; undefined leaves it unchanged.
+  ownerPersonId: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
   url: z
     .string()
     .url("Ugyldig URL.")

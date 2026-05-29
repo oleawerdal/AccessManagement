@@ -25,7 +25,10 @@ export default async function SystemsPage() {
 
   const systems = await prisma.system.findMany({
     orderBy: { name: "asc" },
-    include: { _count: { select: { roles: true } } },
+    include: {
+      _count: { select: { roles: true } },
+      ownerPerson: { select: { firstName: true, lastName: true } },
+    },
   });
 
   return (
@@ -80,7 +83,9 @@ export default async function SystemsPage() {
                   </TableCell>
                   <TableCell className="text-sm">{s.category ?? "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {s.ownerEmail ?? "—"}
+                    {s.ownerPerson
+                      ? `${s.ownerPerson.firstName} ${s.ownerPerson.lastName}`
+                      : s.ownerEmail ?? "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {s._count.roles}

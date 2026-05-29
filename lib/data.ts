@@ -136,6 +136,9 @@ export async function getSystemWithAccess(id: string) {
   return prisma.system.findUnique({
     where: { id },
     include: {
+      ownerPerson: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
       roles: {
         orderBy: { name: "asc" },
         include: {

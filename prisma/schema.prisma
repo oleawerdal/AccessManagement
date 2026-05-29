@@ -84,6 +84,7 @@ model Person {
 
   assignments  RoleAssignment[]
   memberships  GroupMembership[]
+  ownedSystems System[]          @relation("SystemOwner")
 
   @@index([lastName, firstName])
   @@index([active])
@@ -95,12 +96,18 @@ model System {
   description String?
   category    String?
   ownerEmail  String?
+  // Preferred: the system owner is a Person in the registry. ownerEmail is
+  // kept for backwards compatibility / external import.
+  ownerPersonId String?
+  ownerPerson   Person? @relation("SystemOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
   url         String?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   roles Role[]
+
+  @@index([ownerPersonId])
 }
 
 model Role {

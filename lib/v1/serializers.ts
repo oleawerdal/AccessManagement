@@ -56,6 +56,7 @@ export type SystemDTO = {
   description: string | null;
   category: string | null;
   ownerEmail: string | null;
+  ownerPersonId: string | null;
   url: string | null;
   active: boolean;
   createdAt: string;
@@ -69,6 +70,7 @@ export function serializeSystem(s: System): SystemDTO {
     description: s.description,
     category: s.category,
     ownerEmail: s.ownerEmail,
+    ownerPersonId: s.ownerPersonId,
     url: s.url,
     active: s.active,
     createdAt: s.createdAt.toISOString(),

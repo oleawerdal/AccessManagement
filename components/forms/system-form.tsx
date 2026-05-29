@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,16 +28,23 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const NONE = "__none__";
+
+type PersonOption = { id: string; firstName: string; lastName: string };
 
 const schema = z.object({
   name: z.string().min(1, "Navn er påkrevd."),
   description: z.string().optional(),
   category: z.string().optional(),
-  ownerEmail: z
-    .string()
-    .email("Ugyldig e-postadresse.")
-    .optional()
-    .or(z.literal("")),
+  ownerPersonId: z.string(),
   url: z.string().url("Ugyldig URL.").optional().or(z.literal("")),
   active: z.boolean(),
 });
@@ -47,12 +54,13 @@ export function SystemFormDialog({
   system,
   trigger,
 }: {
-  system?: System;
+  system?: (System & { ownerPersonId?: string | null }) | undefined;
   trigger?: React.ReactNode;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [persons, setPersons] = useState<PersonOption[]>([]);
   const editing = Boolean(system);
 
   const form = useForm<FormValues>({
@@ -61,17 +69,35 @@ export function SystemFormDialog({
       name: system?.name ?? "",
       description: system?.description ?? "",
       category: system?.category ?? "",
-      ownerEmail: system?.ownerEmail ?? "",
+      ownerPersonId: system?.ownerPersonId ?? NONE,
       url: system?.url ?? "",
       active: system?.active ?? true,
     },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    apiRequest<PersonOption[]>("/api/persons?active=true")
+      .then(setPersons)
+      .catch(() => {});
+  }, [open]);
+
   async function onSubmit(values: FormValues) {
     try {
       await apiRequest(
         editing ? `/api/systems/${system!.id}` : "/api/systems",
-        { method: editing ? "PATCH" : "POST", body: values },
+        {
+          method: editing ? "PATCH" : "POST",
+          body: {
+            name: values.name,
+            description: values.description,
+            category: values.category,
+            url: values.url,
+            active: values.active,
+            ownerPersonId:
+              values.ownerPersonId === NONE ? null : values.ownerPersonId,
+          },
+        },
       );
       toast({ title: editing ? "System oppdatert." : "System opprettet." });
       setOpen(false);
@@ -138,13 +164,25 @@ export function SystemFormDialog({
               />
               <FormField
                 control={form.control}
-                name="ownerEmail"
+                name="ownerPersonId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Systemeier (e-post)</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
+                    <FormLabel>Systemeier</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Velg person" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Ingen</SelectItem>
+                        {persons.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.firstName} {p.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
