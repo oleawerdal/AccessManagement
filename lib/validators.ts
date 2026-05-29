@@ -160,7 +160,12 @@ export const auditQuerySchema = z.object({
 export const adminUserCreateSchema = z.object({
   email: z.string().email("Ugyldig e-postadresse."),
   name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
-  password: z.string().min(8, "Minst 8 tegn."),
+  // Optional: when omitted the user is invited by e-mail to set their own.
+  password: z
+    .string()
+    .min(8, "Minst 8 tegn.")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   role: z.enum(["ADMIN", "AUDITOR"]).default("ADMIN"),
   active: z.boolean().default(true),
 });
