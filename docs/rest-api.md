@@ -8,6 +8,16 @@ from UI changes.
 All mutations are recorded in the audit log, attributed to the API key
 (`api:<key name>`).
 
+## Interactive docs (Swagger / OpenAPI)
+
+- **Swagger UI:** [`/api/v1/docs`](/api/v1/docs) — try requests in the browser
+  (click **Authorize** and paste an API key).
+- **OpenAPI spec:** [`/api/v1/openapi.json`](/api/v1/openapi.json) — import into
+  Postman/Insomnia or feed to a client generator.
+
+Both are reachable from the web UI under **Innstillinger → API-nøkler →
+API-dokumentasjon**.
+
 ## Authentication
 
 Authenticate with an API key as a bearer token:
