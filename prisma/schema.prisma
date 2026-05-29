@@ -62,7 +62,8 @@ model AdminUser {
 
   // Audit logs reference this admin, but we keep logs even if the admin is
   // deleted (adminEmail is duplicated onto each log). Hence SetNull, not Cascade.
-  auditLogs AuditLog[] @relation("AuditLogAdmin")
+  auditLogs   AuditLog[]           @relation("AuditLogAdmin")
+  resetTokens PasswordResetToken[]
 }
 
 model Person {
@@ -173,6 +174,9 @@ model RoleAssignment {
   source        AssignmentSource @default(DIRECT)
   sourceGroupId String?
   notes         String?
+  // Set when an expiry notification has been sent, so the reminder job emails
+  // about a given expired assignment only once.
+  expiryNotifiedAt DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -202,6 +206,36 @@ model ApiKey {
   updatedAt  DateTime  @updatedAt
 
   @@index([active])
+}
+
+// Outgoing-mail (SMTP) configuration. Single-row table (fixed id "default"),
+// editable by an admin in Settings. `password` is write-only — it is never
+// returned to the client.
+model SmtpSettings {
+  id        String   @id @default("default")
+  host      String
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  username  String?
+  password  String?
+  fromEmail String
+  fromName  String   @default("Tilgangsstyring")
+  enabled   Boolean  @default(false)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+// Single-use, hashed tokens for the "set / reset password" e-mail flow.
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
 }
 
 model AuditLog {
