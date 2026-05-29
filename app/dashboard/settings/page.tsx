@@ -8,6 +8,7 @@ import { canMutate } from "@/lib/permissions";
 import { adminRoleLabel } from "@/lib/labels";
 import { PageHeader } from "@/components/layout/page-header";
 import { AdminUserFormDialog } from "@/components/forms/admin-user-form";
+import { ApiKeyFormDialog } from "@/components/forms/api-key-form";
 import { DeleteButton } from "@/components/common/delete-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,20 @@ export default async function SettingsPage() {
       role: true,
       active: true,
       lastLoginAt: true,
+    },
+  });
+
+  const apiKeys = await prisma.apiKey.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      prefix: true,
+      role: true,
+      active: true,
+      expiresAt: true,
+      lastUsedAt: true,
+      createdAt: true,
     },
   });
 
@@ -125,6 +140,118 @@ export default async function SettingsPage() {
                 </TableCell>
               </TableRow>
             ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <div className="flex items-center justify-between pt-2">
+        <div>
+          <h2 className="text-base font-semibold">API-nøkler</h2>
+          <p className="text-sm text-muted-foreground">
+            For eksterne integrasjoner mot REST-API-et (<code>/api/v1</code>).
+          </p>
+        </div>
+        <ApiKeyFormDialog />
+      </div>
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Navn</TableHead>
+              <TableHead>Identifikator</TableHead>
+              <TableHead>Rolle</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Utløper</TableHead>
+              <TableHead>Sist brukt</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {apiKeys.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="py-10 text-center text-sm text-muted-foreground"
+                >
+                  Ingen API-nøkler ennå.
+                </TableCell>
+              </TableRow>
+            ) : (
+              apiKeys.map((k) => {
+                const expired =
+                  k.expiresAt != null && k.expiresAt.getTime() <= Date.now();
+                return (
+                  <TableRow key={k.id}>
+                    <TableCell className="font-medium">{k.name}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {k.prefix}…
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={k.role === "ADMIN" ? "default" : "secondary"}
+                      >
+                        {adminRoleLabel[k.role]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {!k.active ? (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Deaktivert
+                        </Badge>
+                      ) : expired ? (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Utløpt
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Aktiv</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {k.expiresAt
+                        ? format(k.expiresAt, "dd.MM.yyyy", { locale: nb })
+                        : "Aldri"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {k.lastUsedAt
+                        ? format(k.lastUsedAt, "dd.MM.yyyy HH:mm", { locale: nb })
+                        : "Aldri"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <ApiKeyFormDialog
+                          apiKey={{
+                            id: k.id,
+                            name: k.name,
+                            prefix: k.prefix,
+                            role: k.role,
+                            active: k.active,
+                            expiresAt: k.expiresAt
+                              ? k.expiresAt.toISOString()
+                              : null,
+                          }}
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              aria-label="Rediger"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        <DeleteButton
+                          url={`/api/admin-keys/${k.id}`}
+                          resourceLabel={`API-nøkkelen ${k.name}`}
+                          successMessage="API-nøkkel slettet."
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </Card>

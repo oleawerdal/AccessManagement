@@ -170,3 +170,23 @@ export const adminUserUpdateSchema = z.object({
   role: z.enum(["ADMIN", "AUDITOR"]).optional(),
   active: z.boolean().optional(),
 });
+
+// --- API keys (external REST API) ---------------------------------------
+export const apiKeyCreateSchema = z.object({
+  name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
+  role: z.enum(["ADMIN", "AUDITOR"]).default("ADMIN"),
+  expiresAt: optionalDate,
+});
+export const apiKeyUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(150).optional(),
+  role: z.enum(["ADMIN", "AUDITOR"]).optional(),
+  active: z.boolean().optional(),
+  // Accept null to clear an existing expiry, a date string to set one.
+  expiresAt: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v ? new Date(v) : null))
+    .refine((v) => v == null || !Number.isNaN(v.getTime()), {
+      message: "Ugyldig dato.",
+    }),
+});

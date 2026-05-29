@@ -69,5 +69,6 @@ export const entityTypeLabel: Record<string, string> = {
   GroupMembership: "Gruppemedlemskap",
   RoleAssignment: "Tilordning",
   AdminUser: "Adminbruker",
+  ApiKey: "API-nøkkel",
   Export: "Eksport",
 };
