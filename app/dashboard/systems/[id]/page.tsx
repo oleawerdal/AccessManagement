@@ -60,7 +60,11 @@ export default async function SystemDetailPage({
           )}
           <p className="mt-1 text-xs text-muted-foreground">
             {system.category ?? "Ukategorisert"}
-            {system.ownerEmail ? ` · Eier: ${system.ownerEmail}` : ""}
+            {system.ownerPerson
+              ? ` · Eier: ${system.ownerPerson.firstName} ${system.ownerPerson.lastName}`
+              : system.ownerEmail
+                ? ` · Eier: ${system.ownerEmail}`
+                : ""}
           </p>
         </div>
         {isAdmin && (

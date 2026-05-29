@@ -58,6 +58,13 @@ export const systemCreateSchema = z.object({
     .email("Ugyldig e-postadresse.")
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  // Person who owns the system. null clears it; undefined leaves it unchanged.
+  ownerPersonId: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
   url: z
     .string()
     .url("Ugyldig URL.")
@@ -69,16 +76,27 @@ export const systemUpdateSchema = systemCreateSchema.partial();
 export type SystemInput = z.infer<typeof systemCreateSchema>;
 
 // --- Role ----------------------------------------------------------------
-export const riskLevelEnum = z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]);
-
 export const roleCreateSchema = z.object({
   systemId: z.string().min(1, "System er påkrevd."),
   name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
   description: optionalString,
-  riskLevel: riskLevelEnum.default("NORMAL"),
+  riskLevelId: z.string().min(1, "Risikonivå er påkrevd."),
 });
 export const roleUpdateSchema = roleCreateSchema.partial().omit({ systemId: true });
 export type RoleInput = z.infer<typeof roleCreateSchema>;
+
+// --- Risk levels (configurable) -----------------------------------------
+const hexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Bruk en hex-farge, f.eks. #3b82f6");
+
+export const riskLevelCreateSchema = z.object({
+  label: z.string().trim().min(1, "Navn er påkrevd.").max(100),
+  description: optionalString,
+  color: hexColor.default("#64748b"),
+  severity: z.coerce.number().int().min(0).max(1000).default(0),
+});
+export const riskLevelUpdateSchema = riskLevelCreateSchema.partial();
 
 // --- Group ---------------------------------------------------------------
 export const groupRoleInputSchema = z.object({
@@ -160,7 +178,12 @@ export const auditQuerySchema = z.object({
 export const adminUserCreateSchema = z.object({
   email: z.string().email("Ugyldig e-postadresse."),
   name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
-  password: z.string().min(8, "Minst 8 tegn."),
+  // Optional: when omitted the user is invited by e-mail to set their own.
+  password: z
+    .string()
+    .min(8, "Minst 8 tegn.")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   role: z.enum(["ADMIN", "AUDITOR"]).default("ADMIN"),
   active: z.boolean().default(true),
 });

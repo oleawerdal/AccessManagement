@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Role } from "@prisma/client";
 
 import { apiRequest, ApiError } from "@/lib/api-client";
-import { riskLevelLabel } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,10 +34,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type RoleLite = {
+  id: string;
+  name: string;
+  description: string | null;
+  riskLevelId: string;
+};
+
+type RiskLevelOption = {
+  id: string;
+  label: string;
+  description: string | null;
+  color: string;
+  severity: number;
+};
+
 const schema = z.object({
   name: z.string().min(1, "Navn er påkrevd."),
   description: z.string().optional(),
-  riskLevel: z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]),
+  riskLevelId: z.string().min(1, "Risikonivå er påkrevd."),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -49,12 +62,13 @@ export function RoleFormDialog({
   trigger,
 }: {
   systemId: string;
-  role?: Role;
+  role?: RoleLite;
   trigger?: React.ReactNode;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [levels, setLevels] = useState<RiskLevelOption[]>([]);
   const editing = Boolean(role);
 
   const form = useForm<FormValues>({
@@ -62,9 +76,25 @@ export function RoleFormDialog({
     defaultValues: {
       name: role?.name ?? "",
       description: role?.description ?? "",
-      riskLevel: role?.riskLevel ?? "NORMAL",
+      riskLevelId: role?.riskLevelId ?? "",
     },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    apiRequest<RiskLevelOption[]>("/api/risk-levels")
+      .then((data) => {
+        setLevels(data);
+        // Preselect a default level when creating a new role.
+        if (!role && !form.getValues("riskLevelId") && data.length > 0) {
+          form.setValue("riskLevelId", data[0].id);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const selected = levels.find((l) => l.id === form.watch("riskLevelId"));
 
   async function onSubmit(values: FormValues) {
     try {
@@ -110,24 +140,35 @@ export function RoleFormDialog({
             />
             <FormField
               control={form.control}
-              name="riskLevel"
+              name="riskLevelId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Risikonivå</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Velg nivå" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(riskLevelLabel).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>
-                          {l}
+                      {levels.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          <span className="inline-flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: l.color }}
+                            />
+                            {l.label}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selected?.description && (
+                    <p className="text-xs text-muted-foreground">
+                      {selected.description}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

@@ -3,7 +3,6 @@ import type {
   AssignmentSource,
   AuditAction,
   EmploymentType,
-  RiskLevel,
 } from "@prisma/client";
 
 export const employmentTypeLabel: Record<EmploymentType, string> = {
@@ -11,21 +10,6 @@ export const employmentTypeLabel: Record<EmploymentType, string> = {
   CONSULTANT: "Konsulent",
   EXTERNAL: "Ekstern",
   INTERN: "Praktikant",
-};
-
-export const riskLevelLabel: Record<RiskLevel, string> = {
-  LOW: "Lav",
-  NORMAL: "Normal",
-  HIGH: "Høy",
-  CRITICAL: "Kritisk",
-};
-
-// Risk colors: LOW = grey, NORMAL = blue, HIGH = orange, CRITICAL = red.
-export const riskLevelClasses: Record<RiskLevel, string> = {
-  LOW: "bg-risk-low/10 text-risk-low border-risk-low/20",
-  NORMAL: "bg-risk-normal/10 text-risk-normal border-risk-normal/25",
-  HIGH: "bg-risk-high/10 text-risk-high border-risk-high/25",
-  CRITICAL: "bg-risk-critical/10 text-risk-critical border-risk-critical/25",
 };
 
 export const assignmentSourceLabel: Record<AssignmentSource, string> = {
@@ -64,6 +48,7 @@ export const entityTypeLabel: Record<string, string> = {
   Person: "Person",
   System: "System",
   Role: "Rolle",
+  RiskLevel: "Risikonivå",
   Group: "Gruppe",
   GroupRole: "Grupperolle",
   GroupMembership: "Gruppemedlemskap",

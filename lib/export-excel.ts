@@ -1,7 +1,6 @@
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
 
-import { riskLevelLabel } from "@/lib/labels";
 import { expiryStatusLabel, type ExpiryStatus } from "@/lib/expiry";
 import { assignmentSourceLabel } from "@/lib/labels";
 import type { ExportData } from "@/lib/export-data";
@@ -108,7 +107,7 @@ export async function buildExcel(data: ExportData): Promise<Buffer> {
         department: p.department ?? "",
         system: a.systemName,
         role: a.roleName,
-        risk: riskLevelLabel[a.riskLevel],
+        risk: a.riskLevel,
         source: assignmentSourceLabel[a.source],
         status: expiryStatusLabel[a.status],
         expires: fmtDate(a.expiresAt),
@@ -142,7 +141,7 @@ export async function buildExcel(data: ExportData): Promise<Buffer> {
         perSystem.addRow({
           system: s.name,
           role: rp.roleName,
-          risk: riskLevelLabel[rp.riskLevel],
+          risk: rp.riskLevel,
           person: "(ingen)",
         });
         continue;
@@ -151,7 +150,7 @@ export async function buildExcel(data: ExportData): Promise<Buffer> {
         const row = perSystem.addRow({
           system: s.name,
           role: rp.roleName,
-          risk: riskLevelLabel[rp.riskLevel],
+          risk: rp.riskLevel,
           person: person.name,
           source: assignmentSourceLabel[person.source],
           status: expiryStatusLabel[person.status],

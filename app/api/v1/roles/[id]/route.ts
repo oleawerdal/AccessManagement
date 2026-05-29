@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return withApiV1(async () => {
     const role = await prisma.role.findUniqueOrThrow({
       where: { id: params.id },
-      include: { system: { select: { id: true, name: true } } },
+      include: { system: { select: { id: true, name: true } }, riskLevel: true },
     });
     return NextResponse.json(serializeRole(role));
   });
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const updated = await prisma.role.update({
       where: { id: params.id },
       data,
-      include: { system: { select: { id: true, name: true } } },
+      include: { system: { select: { id: true, name: true } }, riskLevel: true },
     });
     return NextResponse.json(serializeRole(updated));
   });

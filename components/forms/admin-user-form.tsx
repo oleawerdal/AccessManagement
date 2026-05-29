@@ -62,6 +62,9 @@ export function AdminUserFormDialog({
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  // New users are invited by e-mail by default; this opts into setting a
+  // password manually instead (e.g. when e-mail is not configured).
+  const [manualPassword, setManualPassword] = useState(false);
   const editing = Boolean(user);
 
   const form = useForm<FormValues>({
@@ -76,10 +79,16 @@ export function AdminUserFormDialog({
   });
 
   async function onSubmit(values: FormValues) {
-    if (!editing && (!values.password || values.password.length < 8)) {
-      form.setError("password", { message: "Minst 8 tegn for ny bruker." });
+    const wantsPassword = editing || manualPassword;
+    if (wantsPassword && values.password && values.password.length < 8) {
+      form.setError("password", { message: "Minst 8 tegn." });
       return;
     }
+    if (!editing && manualPassword && !values.password) {
+      form.setError("password", { message: "Skriv inn et passord (minst 8 tegn)." });
+      return;
+    }
+
     try {
       if (editing) {
         await apiRequest(`/api/admin-users/${user!.id}`, {
@@ -91,13 +100,39 @@ export function AdminUserFormDialog({
             password: values.password || undefined,
           },
         });
+        toast({ title: "Bruker oppdatert." });
       } else {
-        await apiRequest("/api/admin-users", {
-          method: "POST",
-          body: values,
-        });
+        const res = await apiRequest<{ emailSent?: boolean; emailError?: string }>(
+          "/api/admin-users",
+          {
+            method: "POST",
+            body: {
+              email: values.email,
+              name: values.name,
+              role: values.role,
+              active: values.active,
+              // Omit password to trigger an e-mail invitation.
+              password: manualPassword ? values.password : undefined,
+            },
+          },
+        );
+        if (manualPassword) {
+          toast({ title: "Bruker opprettet." });
+        } else if (res.emailSent) {
+          toast({
+            title: "Invitasjon sendt.",
+            description: `${values.email} kan nå sette passordet sitt.`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Bruker opprettet, men invitasjon ble ikke sendt",
+            description:
+              (res.emailError ?? "E-post feilet.") +
+              " Send passord-lenke på nytt fra listen, eller sjekk SMTP.",
+          });
+        }
       }
-      toast({ title: editing ? "Bruker oppdatert." : "Bruker opprettet." });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -148,21 +183,42 @@ export function AdminUserFormDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {editing ? "Nytt passord (valgfritt)" : "Passord"}
-                  </FormLabel>
-                  <FormControl>
-                    <Input type="password" autoComplete="new-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
+            {!editing && (
+              <div className="flex flex-row items-center gap-2">
+                <Checkbox
+                  id="manual-password"
+                  checked={manualPassword}
+                  onCheckedChange={(v) => setManualPassword(Boolean(v))}
+                />
+                <label htmlFor="manual-password" className="text-sm">
+                  Sett passord manuelt (ellers sendes en invitasjon på e-post)
+                </label>
+              </div>
+            )}
+
+            {(editing || manualPassword) && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {editing ? "Nytt passord (valgfritt)" : "Passord"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="role"
@@ -211,7 +267,13 @@ export function AdminUserFormDialog({
                 Avbryt
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Lagrer…" : "Lagre"}
+                {form.formState.isSubmitting
+                  ? "Lagrer…"
+                  : editing
+                    ? "Lagre"
+                    : manualPassword
+                      ? "Opprett"
+                      : "Opprett og inviter"}
               </Button>
             </div>
           </form>

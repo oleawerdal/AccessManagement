@@ -9,7 +9,6 @@ import {
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
-import { riskLevelLabel } from "@/lib/labels";
 import { assignmentSourceLabel } from "@/lib/labels";
 import { expiryStatusLabel, type ExpiryStatus } from "@/lib/expiry";
 import type { ExportData } from "@/lib/export-data";
@@ -150,7 +149,7 @@ function PerSystemSection({ data }: { data: ExportData }) {
                   <View key={`${rp.roleName}-empty`} style={styles.row}>
                     <Text style={{ width: "30%" }}>{rp.roleName}</Text>
                     <Text style={{ width: "15%" }}>
-                      {riskLevelLabel[rp.riskLevel]}
+                      {rp.riskLevel}
                     </Text>
                     <Text style={[{ width: "55%" }, styles.muted]}>
                       Ingen tildelinger
@@ -169,7 +168,7 @@ function PerSystemSection({ data }: { data: ExportData }) {
                       {pi === 0 ? rp.roleName : ""}
                     </Text>
                     <Text style={{ width: "15%" }}>
-                      {pi === 0 ? riskLevelLabel[rp.riskLevel] : ""}
+                      {pi === 0 ? rp.riskLevel : ""}
                     </Text>
                     <Text style={{ width: "30%" }}>{person.name}</Text>
                     <Text style={{ width: "12%" }}>
@@ -220,7 +219,7 @@ function PerPersonSection({ data }: { data: ExportData }) {
                 >
                   <Text style={{ width: "28%" }}>{a.systemName}</Text>
                   <Text style={{ width: "30%" }}>{a.roleName}</Text>
-                  <Text style={{ width: "14%" }}>{riskLevelLabel[a.riskLevel]}</Text>
+                  <Text style={{ width: "14%" }}>{a.riskLevel}</Text>
                   <Text style={{ width: "13%" }}>
                     {assignmentSourceLabel[a.source]}
                   </Text>

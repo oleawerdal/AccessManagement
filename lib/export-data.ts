@@ -1,4 +1,4 @@
-import type { RiskLevel, AssignmentSource } from "@prisma/client";
+import type { AssignmentSource } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getExpiryStatus, needsRevision, type ExpiryStatus } from "@/lib/expiry";
@@ -6,7 +6,7 @@ import { getExpiryStatus, needsRevision, type ExpiryStatus } from "@/lib/expiry"
 export type ExportAccess = {
   systemName: string;
   roleName: string;
-  riskLevel: RiskLevel;
+  riskLevel: string;
   source: AssignmentSource;
   status: ExpiryStatus;
   expiresAt: Date | null;
@@ -23,7 +23,7 @@ export type ExportPerson = {
 
 export type ExportRolePeople = {
   roleName: string;
-  riskLevel: RiskLevel;
+  riskLevel: string;
   people: {
     name: string;
     source: AssignmentSource;
@@ -34,7 +34,7 @@ export type ExportRolePeople = {
 
 export type ExportSystem = {
   name: string;
-  roles: { id: string; name: string; riskLevel: RiskLevel }[];
+  roles: { id: string; name: string; riskLevel: string }[];
   rolePeople: ExportRolePeople[];
 };
 
@@ -70,14 +70,16 @@ export async function buildExportData(): Promise<ExportData> {
       include: {
         assignments: {
           where: { revokedAt: null },
-          include: { role: { include: { system: true } } },
+          include: { role: { include: { system: true, riskLevel: true } } },
         },
       },
     }),
     prisma.system.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
-      include: { roles: { orderBy: { name: "asc" } } },
+      include: {
+        roles: { orderBy: { name: "asc" }, include: { riskLevel: true } },
+      },
     }),
     prisma.auditLog.findMany({
       orderBy: { timestamp: "desc" },
@@ -104,7 +106,7 @@ export async function buildExportData(): Promise<ExportData> {
       const access: ExportAccess = {
         systemName: a.role.system.name,
         roleName: a.role.name,
-        riskLevel: a.role.riskLevel,
+        riskLevel: a.role.riskLevel.label,
         source: a.source,
         status: getExpiryStatus(a.expiresAt, now),
         expiresAt: a.expiresAt,
@@ -145,14 +147,14 @@ export async function buildExportData(): Promise<ExportData> {
             expiresAt: cell.expiresAt,
           };
         });
-      return { roleName: role.name, riskLevel: role.riskLevel, people };
+      return { roleName: role.name, riskLevel: role.riskLevel.label, people };
     });
     return {
       name: s.name,
       roles: s.roles.map((r) => ({
         id: r.id,
         name: r.name,
-        riskLevel: r.riskLevel,
+        riskLevel: r.riskLevel.label,
       })),
       rolePeople,
     };
