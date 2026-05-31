@@ -130,6 +130,30 @@ export async function getPersonWithAccess(id: string) {
         orderBy: [{ role: { system: { name: "asc" } } }, { grantedAt: "desc" }],
       },
       memberships: { include: { group: true }, orderBy: { addedAt: "desc" } },
+      resourceAccesses: {
+        include: {
+          resource: { include: { type: true, riskLevel: true } },
+          method: true,
+        },
+        orderBy: [{ resource: { name: "asc" } }, { grantedAt: "desc" }],
+      },
+    },
+  });
+}
+
+export async function getResourceWithAccess(id: string) {
+  return prisma.resource.findUnique({
+    where: { id },
+    include: {
+      type: true,
+      riskLevel: true,
+      ownerPerson: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      accesses: {
+        include: { person: true, method: true },
+        orderBy: { grantedAt: "desc" },
+      },
     },
   });
 }

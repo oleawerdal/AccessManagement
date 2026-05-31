@@ -126,6 +126,26 @@ Risikonivåer**: admin kan legge til, endre og fjerne nivåer med eget navn,
 farge, rang (alvorlighet) og beskrivelse. Et nivå som er i bruk av roller kan
 ikke slettes. Standardoppsettet er Lav/Normal/Høy/Kritisk.
 
+### Fysiske ressurser (dører, porter, biler m.m.)
+
+Ved siden av digitale systemer kan du registrere **fysiske ressurser** og hvem
+som har tilgang til dem, samt **hvordan** tilgangen gis. Modulen ligger under
+**Ressurser** i menyen.
+
+- **Ressurstyper** og **tilgangsmetoder** er konfigurerbare under
+  **Innstillinger** (på samme måte som risikonivåer). Standardoppsett:
+  - Typer: Dør, Port, Bil, Rom
+  - Metoder: Fysisk nøkkel, Nøkkelkort, App, Kode/PIN
+- En ressurs kan ha **risikonivå**, plassering, identifikator (reg.nr/dørnr) og
+  en ansvarlig person.
+- Hver tilgang knytter **person → ressurs → metode**. Metoder som er merket
+  «utleverer fysisk nøkkel/kort» krever et **kort-/nøkkelnummer**, slik at man vet
+  nøyaktig hvilket fysisk objekt som skal inndras ved opphør.
+- Ved **revokering** registreres om nøkkelen/kortet er **levert tilbake** –
+  nyttig for offboarding. Tilganger som ikke er innlevert markeres tydelig.
+- Tilganger har **utløpsdato** og dekkes av de samme **utløpsvarslene** og
+  fargekodene som systemtilganger. Alt logges i revisjonsloggen.
+
 ### Utløp og fargekoder
 
 - **Grønn** – gyldig, mer enn 30 dager igjen

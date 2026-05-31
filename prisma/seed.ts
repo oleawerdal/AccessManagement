@@ -298,6 +298,127 @@ async function main() {
     "Driftsansvarlig for M365-tenant.",
   );
 
+  // --- Physical resources ---------------------------------------------------
+  // Configurable resource types (door, gate, car, …).
+  const resourceTypeDefs = [
+    { id: "rtype_door", label: "Dør", icon: "DoorOpen", description: "Dør med adgangskontroll." },
+    { id: "rtype_gate", label: "Port", icon: "DoorClosed", description: "Port eller bom." },
+    { id: "rtype_car", label: "Bil", icon: "Car", description: "Tjeneste-/firmabil." },
+    { id: "rtype_room", label: "Rom", icon: "Building2", description: "Rom eller sone." },
+  ] as const;
+  const resourceTypeId: Record<string, string> = {};
+  for (const d of resourceTypeDefs) {
+    const t = await prisma.resourceType.upsert({
+      where: { label: d.label },
+      update: { icon: d.icon, description: d.description },
+      create: { id: d.id, label: d.label, icon: d.icon, description: d.description },
+    });
+    resourceTypeId[d.label] = t.id;
+  }
+
+  // Configurable access methods (physical key, app, keycard, …).
+  const accessMethodDefs = [
+    { id: "amethod_key", label: "Fysisk nøkkel", requiresCredential: true, description: "Tradisjonell nøkkel som utleveres." },
+    { id: "amethod_card", label: "Nøkkelkort", requiresCredential: true, description: "RFID-/NFC-kort." },
+    { id: "amethod_app", label: "App", requiresCredential: false, description: "Adgang via mobilapp." },
+    { id: "amethod_code", label: "Kode/PIN", requiresCredential: false, description: "Tastatur med PIN-kode." },
+  ] as const;
+  const accessMethodId: Record<string, string> = {};
+  for (const d of accessMethodDefs) {
+    const m = await prisma.accessMethod.upsert({
+      where: { label: d.label },
+      update: { requiresCredential: d.requiresCredential, description: d.description },
+      create: {
+        id: d.id,
+        label: d.label,
+        requiresCredential: d.requiresCredential,
+        description: d.description,
+      },
+    });
+    accessMethodId[d.label] = m.id;
+  }
+
+  // Example resources.
+  const frontDoor = await prisma.resource.upsert({
+    where: { name: "Hovedinngang" },
+    update: {},
+    create: {
+      name: "Hovedinngang",
+      description: "Hovedinngang i resepsjonen.",
+      typeId: resourceTypeId["Dør"],
+      location: "Bygg A – 1. etasje",
+      identifier: "DØR-001",
+      riskLevelId: riskId["NORMAL"],
+      ownerPersonId: kari.id,
+    },
+  });
+
+  const serverRoom = await prisma.resource.upsert({
+    where: { name: "Serverrom" },
+    update: {},
+    create: {
+      name: "Serverrom",
+      description: "Adgang til serverrom med kritisk infrastruktur.",
+      typeId: resourceTypeId["Rom"],
+      location: "Bygg A – kjeller",
+      identifier: "DØR-K01",
+      riskLevelId: riskId["CRITICAL"],
+      ownerPersonId: per.id,
+    },
+  });
+
+  const serviceCar = await prisma.resource.upsert({
+    where: { name: "Tjenestebil EL12345" },
+    update: {},
+    create: {
+      name: "Tjenestebil EL12345",
+      description: "Elektrisk tjenestebil for salgsavdelingen.",
+      typeId: resourceTypeId["Bil"],
+      identifier: "EL12345",
+      riskLevelId: riskId["NORMAL"],
+    },
+  });
+
+  const grantResource = async (
+    personId: string,
+    resourceId: string,
+    methodLabel: string,
+    opts: { credentialId?: string; expiresAt?: Date | null; notes?: string } = {},
+  ) => {
+    const methodId = accessMethodId[methodLabel];
+    await prisma.resourceAccess.upsert({
+      where: {
+        personId_resourceId_methodId: { personId, resourceId, methodId },
+      },
+      update: {},
+      create: {
+        personId,
+        resourceId,
+        methodId,
+        credentialId: opts.credentialId,
+        expiresAt: opts.expiresAt ?? null,
+        notes: opts.notes,
+        grantedBy: "seed",
+      },
+    });
+  };
+
+  // Kari: permanent keycard to the front door.
+  await grantResource(kari.id, frontDoor.id, "Nøkkelkort", {
+    credentialId: "KORT-1001",
+    notes: "Fast ansatt – generell adgang.",
+  });
+  // Per: physical key to the server room (critical), permanent.
+  await grantResource(per.id, serverRoom.id, "Fysisk nøkkel", {
+    credentialId: "NØKKEL-S07",
+    notes: "Driftsansvarlig.",
+  });
+  // Ola: app access to the service car, expiring soon (yellow).
+  await grantResource(ola.id, serviceCar.id, "App", {
+    expiresAt: addDays(now, 10),
+    notes: "Midlertidig lån i salgsprosjekt.",
+  });
+
   console.log("Seed complete.");
 }
 

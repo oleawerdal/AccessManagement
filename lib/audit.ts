@@ -26,6 +26,9 @@ const AUDITED_MODELS = new Set([
   "GroupRole",
   "GroupMembership",
   "AdminUser",
+  "ResourceType",
+  "AccessMethod",
+  "Resource",
 ]);
 
 const SINGLE_WRITE_OPS = new Set(["create", "update", "delete", "upsert"]);
@@ -56,7 +59,11 @@ export function entityLabel(model: string, record: unknown): string | undefined 
     case "System":
     case "Role":
     case "Group":
+    case "Resource":
       return String(r.name ?? r.id ?? "");
+    case "ResourceType":
+    case "AccessMethod":
+      return String(r.label ?? r.id ?? "");
     default:
       return r.id ? String(r.id) : undefined;
   }
@@ -259,6 +266,27 @@ export function logAssignmentUpdate(input: {
     action: "UPDATE",
     entityType: "RoleAssignment",
     entityId: input.assignmentId,
+    entityLabel: input.label,
+    before: input.before,
+    after: input.after,
+    metadata: input.metadata,
+  });
+}
+
+// --- Physical resource access (GRANT/REVOKE/UPDATE on ResourceAccess) --------
+
+export function logResourceAccess(input: {
+  action: "GRANT" | "REVOKE" | "UPDATE";
+  accessId: string;
+  label: string;
+  before?: Prisma.InputJsonValue;
+  after?: Prisma.InputJsonValue;
+  metadata?: Prisma.InputJsonValue;
+}) {
+  return writeAuditLog({
+    action: input.action,
+    entityType: "ResourceAccess",
+    entityId: input.accessId,
     entityLabel: input.label,
     before: input.before,
     after: input.after,

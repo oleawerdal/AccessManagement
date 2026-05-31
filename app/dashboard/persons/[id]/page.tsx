@@ -10,9 +10,14 @@ import { canMutate } from "@/lib/permissions";
 import { employmentTypeLabel } from "@/lib/labels";
 import { PersonFormDialog } from "@/components/forms/person-form";
 import { AssignmentFormDialog } from "@/components/forms/assignment-form";
+import { ResourceAccessFormDialog } from "@/components/forms/resource-access-form";
 import { DeleteButton } from "@/components/common/delete-button";
 import { PersonGroups } from "@/components/persons/person-groups";
 import { PersonAccessTable } from "@/components/tables/person-access-table";
+import {
+  ResourceAccessTable,
+  type ResourceAccessRow,
+} from "@/components/tables/resource-access-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,6 +45,18 @@ export default async function PersonDetailPage({
   const isAdmin = canMutate(session?.user.role);
   const person = await getPersonWithAccess(params.id);
   if (!person) notFound();
+
+  const resourceRows: ResourceAccessRow[] = person.resourceAccesses.map((a) => ({
+    id: a.id,
+    expiresAt: a.expiresAt,
+    revokedAt: a.revokedAt,
+    grantedAt: a.grantedAt,
+    credentialId: a.credentialId,
+    credentialReturned: a.credentialReturned,
+    notes: a.notes,
+    method: a.method,
+    resource: a.resource,
+  }));
 
   return (
     <div className="space-y-5">
@@ -144,6 +161,20 @@ export default async function PersonDetailPage({
         </CardHeader>
         <CardContent className="p-0">
           <PersonAccessTable assignments={person.assignments} canMutate={isAdmin} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Fysiske tilganger</CardTitle>
+          {isAdmin && <ResourceAccessFormDialog personId={person.id} />}
+        </CardHeader>
+        <CardContent className="p-0">
+          <ResourceAccessTable
+            accesses={resourceRows}
+            column="resource"
+            canMutate={isAdmin}
+          />
         </CardContent>
       </Card>
     </div>

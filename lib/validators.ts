@@ -98,6 +98,71 @@ export const riskLevelCreateSchema = z.object({
 });
 export const riskLevelUpdateSchema = riskLevelCreateSchema.partial();
 
+// --- Physical resources --------------------------------------------------
+// Configurable resource types (Dør, Port, Bil, …) and access methods
+// (Fysisk nøkkel, App, Nøkkelkort, …) — managed in Settings like risk levels.
+export const resourceTypeCreateSchema = z.object({
+  label: z.string().trim().min(1, "Navn er påkrevd.").max(100),
+  description: optionalString,
+  // Optional lucide-react icon name, e.g. "DoorOpen" / "Car".
+  icon: optionalString,
+});
+export const resourceTypeUpdateSchema = resourceTypeCreateSchema.partial();
+
+export const accessMethodCreateSchema = z.object({
+  label: z.string().trim().min(1, "Navn er påkrevd.").max(100),
+  description: optionalString,
+  requiresCredential: z.boolean().default(false),
+});
+export const accessMethodUpdateSchema = accessMethodCreateSchema.partial();
+
+// nullable id field: null clears it, undefined leaves it unchanged, "" -> null.
+const optionalRefId = z
+  .string()
+  .min(1)
+  .nullable()
+  .optional()
+  .or(z.literal("").transform(() => null));
+
+export const resourceCreateSchema = z.object({
+  name: z.string().trim().min(1, "Navn er påkrevd.").max(150),
+  description: optionalString,
+  typeId: z.string().min(1, "Ressurstype er påkrevd."),
+  location: optionalString,
+  identifier: optionalString,
+  riskLevelId: optionalRefId,
+  ownerPersonId: optionalRefId,
+  active: z.boolean().default(true),
+});
+export const resourceUpdateSchema = resourceCreateSchema.partial();
+export type ResourceInput = z.infer<typeof resourceCreateSchema>;
+
+export const resourceAccessCreateSchema = z.object({
+  personId: z.string().min(1, "Person er påkrevd."),
+  resourceId: z.string().min(1, "Ressurs er påkrevd."),
+  methodId: z.string().min(1, "Tilgangsmetode er påkrevd."),
+  credentialId: optionalString,
+  expiresAt: optionalDate,
+  notes: optionalString,
+});
+export type ResourceAccessInput = z.infer<typeof resourceAccessCreateSchema>;
+
+export const resourceAccessRenewSchema = z.object({
+  expiresAt: z
+    .union([z.string(), z.null()])
+    .transform((v) => (v ? new Date(v) : null))
+    .refine((v) => v === null || !Number.isNaN(v.getTime()), {
+      message: "Ugyldig dato.",
+    }),
+  notes: optionalString,
+});
+
+export const resourceAccessRevokeSchema = z.object({
+  reason: z.string().trim().min(1, "Begrunnelse er påkrevd.").max(1000),
+  // Whether the issued physical credential (key/card) was handed back.
+  credentialReturned: z.boolean().optional(),
+});
+
 // --- Group ---------------------------------------------------------------
 export const groupRoleInputSchema = z.object({
   roleId: z.string().min(1),

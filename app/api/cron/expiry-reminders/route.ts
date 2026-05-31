@@ -28,51 +28,87 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
-  const expired = await prisma.roleAssignment.findMany({
-    where: {
-      revokedAt: null,
-      expiryNotifiedAt: null,
-      expiresAt: { not: null, lte: now },
-    },
-    include: {
-      person: { select: { firstName: true, lastName: true, email: true } },
-      role: {
-        select: {
-          name: true,
-          system: {
-            select: {
-              name: true,
-              ownerEmail: true,
-              ownerPerson: { select: { email: true } },
+  const [expired, expiredResource] = await Promise.all([
+    prisma.roleAssignment.findMany({
+      where: {
+        revokedAt: null,
+        expiryNotifiedAt: null,
+        expiresAt: { not: null, lte: now },
+      },
+      include: {
+        person: { select: { firstName: true, lastName: true, email: true } },
+        role: {
+          select: {
+            name: true,
+            system: {
+              select: {
+                name: true,
+                ownerEmail: true,
+                ownerPerson: { select: { email: true } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    // Physical resource accesses use the same expiry + notification model.
+    prisma.resourceAccess.findMany({
+      where: {
+        revokedAt: null,
+        expiryNotifiedAt: null,
+        expiresAt: { not: null, lte: now },
+      },
+      include: {
+        person: { select: { firstName: true, lastName: true, email: true } },
+        method: { select: { label: true } },
+        resource: {
+          select: {
+            name: true,
+            ownerPerson: { select: { email: true } },
+          },
+        },
+      },
+    }),
+  ]);
 
-  if (expired.length === 0) {
+  if (expired.length === 0 && expiredResource.length === 0) {
     return NextResponse.json({ ok: true, expired: 0, emailsSent: 0 });
   }
 
-  const items: ExpiredItem[] = expired.map((a) => ({
+  // Per-owner buckets (owners only see their own resources' expirations).
+  const byOwner = new Map<string, ExpiredItem[]>();
+  const addToOwner = (owner: string | undefined | null, item: ExpiredItem) => {
+    const key = owner?.trim();
+    if (!key) return;
+    (byOwner.get(key) ?? byOwner.set(key, []).get(key)!).push(item);
+  };
+
+  const assignmentItems: ExpiredItem[] = expired.map((a) => ({
     personName: `${a.person.firstName} ${a.person.lastName}`,
     personEmail: a.person.email,
     systemName: a.role.system.name,
     roleName: a.role.name,
     expiresAt: a.expiresAt,
   }));
-
-  // Per-owner buckets (owners only see their own systems' expirations).
-  const byOwner = new Map<string, ExpiredItem[]>();
   expired.forEach((a, i) => {
-    const owner =
-      a.role.system.ownerPerson?.email?.trim() ||
-      a.role.system.ownerEmail?.trim();
-    if (owner) {
-      (byOwner.get(owner) ?? byOwner.set(owner, []).get(owner)!).push(items[i]);
-    }
+    addToOwner(
+      a.role.system.ownerPerson?.email ?? a.role.system.ownerEmail,
+      assignmentItems[i],
+    );
   });
+
+  const resourceItems: ExpiredItem[] = expiredResource.map((a) => ({
+    personName: `${a.person.firstName} ${a.person.lastName}`,
+    personEmail: a.person.email,
+    systemName: a.resource.name,
+    roleName: a.method.label,
+    expiresAt: a.expiresAt,
+  }));
+  expiredResource.forEach((a, i) => {
+    addToOwner(a.resource.ownerPerson?.email, resourceItems[i]);
+  });
+
+  const items: ExpiredItem[] = [...assignmentItems, ...resourceItems];
 
   const admins = await prisma.adminUser.findMany({
     where: { active: true },
@@ -83,7 +119,7 @@ export async function POST(req: NextRequest) {
   try {
     let emailsSent = 0;
     if (adminEmails.length > 0) {
-      const { subject, html } = expiryDigestEmail(items, "i systemene");
+      const { subject, html } = expiryDigestEmail(items, "i systemene og på ressurser");
       await sendMail({ to: adminEmails, subject, html });
       emailsSent += 1;
     }
@@ -93,12 +129,22 @@ export async function POST(req: NextRequest) {
       emailsSent += 1;
     }
 
-    await prisma.roleAssignment.updateMany({
-      where: { id: { in: expired.map((a) => a.id) } },
-      data: { expiryNotifiedAt: now },
-    });
+    await Promise.all([
+      prisma.roleAssignment.updateMany({
+        where: { id: { in: expired.map((a) => a.id) } },
+        data: { expiryNotifiedAt: now },
+      }),
+      prisma.resourceAccess.updateMany({
+        where: { id: { in: expiredResource.map((a) => a.id) } },
+        data: { expiryNotifiedAt: now },
+      }),
+    ]);
 
-    return NextResponse.json({ ok: true, expired: expired.length, emailsSent });
+    return NextResponse.json({
+      ok: true,
+      expired: expired.length + expiredResource.length,
+      emailsSent,
+    });
   } catch (err) {
     if (err instanceof MailNotConfiguredError) {
       return NextResponse.json({ error: err.message }, { status: 400 });

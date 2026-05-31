@@ -6,6 +6,7 @@ import {
   Grid3x3,
   ScrollText,
   Settings,
+  DoorOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export const navItems: NavItem[] = [
   { label: "Oversikt", href: "/dashboard", icon: LayoutDashboard },
   { label: "Personer", href: "/dashboard/persons", icon: Users },
   { label: "Systemer", href: "/dashboard/systems", icon: Server },
+  { label: "Ressurser", href: "/dashboard/resources", icon: DoorOpen },
   { label: "Grupper", href: "/dashboard/groups", icon: Boxes },
   { label: "Matrise", href: "/dashboard/matrix", icon: Grid3x3 },
   { label: "Revisjonslogg", href: "/dashboard/audit", icon: ScrollText },

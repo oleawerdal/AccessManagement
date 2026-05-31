@@ -75,9 +75,11 @@ model Person {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  assignments  RoleAssignment[]
-  memberships  GroupMembership[]
-  ownedSystems System[]          @relation("SystemOwner")
+  assignments      RoleAssignment[]
+  memberships      GroupMembership[]
+  ownedSystems     System[]          @relation("SystemOwner")
+  resourceAccesses ResourceAccess[]
+  ownedResources   Resource[]        @relation("ResourceOwner")
 
   @@index([lastName, firstName])
   @@index([active])
@@ -134,7 +136,8 @@ model RiskLevel {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  roles Role[]
+  roles     Role[]
+  resources Resource[]
 
   @@index([severity])
 }
@@ -205,6 +208,106 @@ model RoleAssignment {
   @@index([revokedAt])
   @@index([personId])
   @@index([roleId])
+}
+
+// --- Physical / non-system access -------------------------------------------
+// A separate module for physical things (doors, gates, cars, …) that people
+// need access to. Kept alongside System/Role rather than merged into it,
+// because a physical resource has no "roles" and access is instead obtained
+// through a method (physical key, app, keycard, …). Reuses the same audit,
+// expiry and risk-level infrastructure as the digital access model.
+
+// Configurable kind of physical resource (Dør, Port, Bil, …). Like RiskLevel,
+// admins manage these in Settings instead of them being a fixed enum.
+model ResourceType {
+  id          String   @id @default(cuid())
+  label       String   @unique
+  description String?
+  // Optional lucide-react icon name shown in the UI (e.g. "DoorOpen", "Car").
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resources Resource[]
+}
+
+// Configurable way of obtaining access (Fysisk nøkkel, App, Nøkkelkort, …).
+// `requiresCredential` marks methods that hand out a physical token whose
+// identifier (card/key number) should be tracked and collected on revocation.
+model AccessMethod {
+  id                 String   @id @default(cuid())
+  label              String   @unique
+  description        String?
+  requiresCredential Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  accesses ResourceAccess[]
+}
+
+// A physical thing that can be accessed.
+model Resource {
+  id            String       @id @default(cuid())
+  name          String       @unique
+  description   String?
+  typeId        String
+  type          ResourceType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  // Free-text physical location, e.g. "Bygg A – 1. etasje".
+  location      String?
+  // Physical identifier of the resource itself, e.g. registreringsnummer,
+  // dørnummer or anleggsmiddel-ID.
+  identifier    String?
+  riskLevelId   String?
+  riskLevel     RiskLevel?   @relation(fields: [riskLevelId], references: [id], onDelete: SetNull)
+  ownerPersonId String?
+  ownerPerson   Person?      @relation("ResourceOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  accesses ResourceAccess[]
+
+  @@index([typeId])
+  @@index([riskLevelId])
+  @@index([ownerPersonId])
+}
+
+// A person's right to access a resource, obtained via a specific method.
+model ResourceAccess {
+  id           String       @id @default(cuid())
+  personId     String
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  resourceId   String
+  resource     Resource     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  methodId     String
+  method       AccessMethod @relation(fields: [methodId], references: [id], onDelete: Restrict)
+  // Identifier of the issued physical token (card/key number), when the method
+  // requires one. Lets you know exactly which item to collect on offboarding.
+  credentialId String?
+  grantedAt    DateTime     @default(now())
+  grantedBy    String?
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  revokedBy    String?
+  revokeReason String?
+  // Tracks whether an issued physical credential has been handed back. Relevant
+  // for offboarding so no key/card is left outstanding after access is revoked.
+  credentialReturned   Boolean   @default(false)
+  credentialReturnedAt DateTime?
+  notes                String?
+  // Set when an expiry notification has been sent, so the reminder job emails
+  // about a given expired access only once.
+  expiryNotifiedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Same resource cannot be granted to the same person twice via the same method.
+  @@unique([personId, resourceId, methodId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([personId])
+  @@index([resourceId])
+  @@index([methodId])
 }
 
 // Machine-to-machine credentials for the external REST API (/api/v1). The full
