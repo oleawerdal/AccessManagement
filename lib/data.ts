@@ -70,34 +70,64 @@ export type MatrixCell = {
   assignmentId: string;
 };
 
+// Aggregated cell for a person's access to a physical resource. A person can
+// have several accesses to the same resource (different methods), so the cell
+// lists all methods and shows the most urgent expiry status among them.
+export type ResourceMatrixCell = {
+  status: ExpiryStatus;
+  methods: string[];
+  expiresAt: string | null;
+  grantedAt: string;
+  grantedBy: string | null;
+  notes: string | null;
+};
+
 export async function getMatrixData() {
   const now = new Date();
-  const [systems, persons, assignments] = await Promise.all([
-    prisma.system.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      include: {
-        roles: { orderBy: { name: "asc" }, include: { riskLevel: true } },
-      },
-    }),
-    prisma.person.findMany({
-      where: { active: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    }),
-    prisma.roleAssignment.findMany({
-      where: { revokedAt: null, person: { active: true } },
-      select: {
-        id: true,
-        personId: true,
-        roleId: true,
-        source: true,
-        expiresAt: true,
-        grantedAt: true,
-        grantedBy: true,
-        notes: true,
-      },
-    }),
-  ]);
+  const [systems, persons, assignments, resources, resourceAccesses] =
+    await Promise.all([
+      prisma.system.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        include: {
+          roles: { orderBy: { name: "asc" }, include: { riskLevel: true } },
+        },
+      }),
+      prisma.person.findMany({
+        where: { active: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+      prisma.roleAssignment.findMany({
+        where: { revokedAt: null, person: { active: true } },
+        select: {
+          id: true,
+          personId: true,
+          roleId: true,
+          source: true,
+          expiresAt: true,
+          grantedAt: true,
+          grantedBy: true,
+          notes: true,
+        },
+      }),
+      prisma.resource.findMany({
+        where: { active: true },
+        orderBy: [{ type: { label: "asc" } }, { name: "asc" }],
+        include: { type: true, riskLevel: true },
+      }),
+      prisma.resourceAccess.findMany({
+        where: { revokedAt: null, person: { active: true } },
+        select: {
+          personId: true,
+          resourceId: true,
+          expiresAt: true,
+          grantedAt: true,
+          grantedBy: true,
+          notes: true,
+          method: { select: { label: true } },
+        },
+      }),
+    ]);
 
   // cells[personId][roleId] — prefer DIRECT over GROUP when both exist.
   const cells: Record<string, Record<string, MatrixCell>> = {};
@@ -118,7 +148,55 @@ export async function getMatrixData() {
     };
   }
 
-  return { systems, persons, cells };
+  // Group active resources by their type for a separate matrix section.
+  type ResourceCol = {
+    id: string;
+    name: string;
+    riskLevel: (typeof resources)[number]["riskLevel"];
+  };
+  const resourceGroups: { id: string; label: string; resources: ResourceCol[] }[] =
+    [];
+  const groupByType = new Map<string, (typeof resourceGroups)[number]>();
+  for (const r of resources) {
+    let group = groupByType.get(r.typeId);
+    if (!group) {
+      group = { id: r.typeId, label: r.type.label, resources: [] };
+      groupByType.set(r.typeId, group);
+      resourceGroups.push(group);
+    }
+    group.resources.push({ id: r.id, name: r.name, riskLevel: r.riskLevel });
+  }
+
+  // resourceCells[personId][resourceId] — aggregate methods, worst status wins.
+  const statusRank: Record<ExpiryStatus, number> = {
+    VALID: 0,
+    EXPIRING: 1,
+    EXPIRED: 2,
+  };
+  const resourceCells: Record<string, Record<string, ResourceMatrixCell>> = {};
+  for (const a of resourceAccesses) {
+    const row = (resourceCells[a.personId] ??= {});
+    const status = getExpiryStatus(a.expiresAt, now);
+    const existing = row[a.resourceId];
+    if (!existing) {
+      row[a.resourceId] = {
+        status,
+        methods: [a.method.label],
+        expiresAt: a.expiresAt ? a.expiresAt.toISOString() : null,
+        grantedAt: a.grantedAt.toISOString(),
+        grantedBy: a.grantedBy,
+        notes: a.notes,
+      };
+    } else {
+      existing.methods.push(a.method.label);
+      if (statusRank[status] > statusRank[existing.status]) {
+        existing.status = status;
+        existing.expiresAt = a.expiresAt ? a.expiresAt.toISOString() : null;
+      }
+    }
+  }
+
+  return { systems, persons, cells, resourceGroups, resourceCells };
 }
 
 export async function getPersonWithAccess(id: string) {

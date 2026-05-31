@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { RiskLevel } from "@prisma/client";
@@ -13,7 +13,7 @@ import {
   type ExpiryStatus,
 } from "@/lib/expiry";
 import { assignmentSourceLabel } from "@/lib/labels";
-import type { MatrixCell } from "@/lib/data";
+import type { MatrixCell, ResourceMatrixCell } from "@/lib/data";
 import { RiskBadge } from "@/components/badges/risk-badge";
 import {
   Dialog,
@@ -24,6 +24,8 @@ import {
 
 type RoleCol = { id: string; name: string; riskLevel: RiskLevel };
 type SystemCol = { id: string; name: string; roles: RoleCol[] };
+type ResourceCol = { id: string; name: string; riskLevel: RiskLevel | null };
+type ResourceGroup = { id: string; label: string; resources: ResourceCol[] };
 type PersonRow = {
   id: string;
   firstName: string;
@@ -31,12 +33,21 @@ type PersonRow = {
   department: string | null;
 };
 
-type Selected = {
-  person: PersonRow;
-  systemName: string;
-  role: RoleCol;
-  cell: MatrixCell;
-};
+type Selected =
+  | {
+      kind: "role";
+      person: PersonRow;
+      systemName: string;
+      role: RoleCol;
+      cell: MatrixCell;
+    }
+  | {
+      kind: "resource";
+      person: PersonRow;
+      typeLabel: string;
+      resource: ResourceCol;
+      cell: ResourceMatrixCell;
+    };
 
 const dotClass: Record<ExpiryStatus, string> = {
   VALID: "bg-status-valid/15 text-status-valid",
@@ -48,25 +59,37 @@ export function MatrixTable({
   systems,
   persons,
   cells,
+  resourceGroups,
+  resourceCells,
 }: {
   systems: SystemCol[];
   persons: PersonRow[];
   cells: Record<string, Record<string, MatrixCell>>;
+  resourceGroups: ResourceGroup[];
+  resourceCells: Record<string, Record<string, ResourceMatrixCell>>;
 }) {
   const [selected, setSelected] = useState<Selected | null>(null);
   const roleCount = systems.reduce((n, s) => n + s.roles.length, 0);
+  const resourceCount = resourceGroups.reduce(
+    (n, g) => n + g.resources.length,
+    0,
+  );
+  const hasResources = resourceCount > 0;
 
-  if (persons.length === 0 || roleCount === 0) {
+  if (persons.length === 0 || roleCount + resourceCount === 0) {
     return (
       <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-        Ingen aktive personer eller roller å vise.
+        Ingen aktive personer, roller eller ressurser å vise.
       </p>
     );
   }
 
+  // Strong divider on the first physical-resource column to set it apart.
+  const dividerClass = "border-l-2 border-primary/40";
+
   return (
     <>
-      <div className="flex flex-wrap items-center gap-4 px-1 pb-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 pb-3 text-xs text-muted-foreground">
         {(["VALID", "EXPIRING", "EXPIRED"] as ExpiryStatus[]).map((s) => (
           <span key={s} className="inline-flex items-center gap-1.5">
             <span
@@ -75,6 +98,14 @@ export function MatrixTable({
             {expiryStatusLabel[s]}
           </span>
         ))}
+        <span className="inline-flex items-center gap-1.5">
+          <Check className="h-3.5 w-3.5" /> Systemtilgang
+        </span>
+        {hasResources && (
+          <span className="inline-flex items-center gap-1.5 text-primary">
+            <KeyRound className="h-3.5 w-3.5" /> Fysisk tilgang
+          </span>
+        )}
       </div>
 
       <div className="relative max-h-[70vh] overflow-auto rounded-lg border">
@@ -96,6 +127,18 @@ export function MatrixTable({
                   {s.name}
                 </th>
               ))}
+              {resourceGroups.map((g, gi) => (
+                <th
+                  key={g.id}
+                  colSpan={g.resources.length}
+                  className={cn(
+                    "sticky top-0 z-20 border-b bg-primary/10 px-3 py-2 text-center text-xs font-semibold text-primary",
+                    gi === 0 ? dividerClass : "border-l",
+                  )}
+                >
+                  {g.label}
+                </th>
+              ))}
             </tr>
             <tr>
               {systems.flatMap((s) =>
@@ -105,6 +148,21 @@ export function MatrixTable({
                     className={cn(
                       "sticky top-[37px] z-20 whitespace-nowrap bg-muted/40 px-2 py-2 text-center align-bottom text-xs font-medium",
                       i === 0 && "border-l",
+                    )}
+                  >
+                    <div className="mx-auto max-w-[120px] truncate" title={r.name}>
+                      {r.name}
+                    </div>
+                  </th>
+                )),
+              )}
+              {resourceGroups.flatMap((g, gi) =>
+                g.resources.map((r, i) => (
+                  <th
+                    key={r.id}
+                    className={cn(
+                      "sticky top-[37px] z-20 whitespace-nowrap bg-primary/5 px-2 py-2 text-center align-bottom text-xs font-medium",
+                      gi === 0 && i === 0 ? dividerClass : i === 0 && "border-l",
                     )}
                   >
                     <div className="mx-auto max-w-[120px] truncate" title={r.name}>
@@ -147,6 +205,7 @@ export function MatrixTable({
                             type="button"
                             onClick={() =>
                               setSelected({
+                                kind: "role",
                                 person: p,
                                 systemName: s.name,
                                 role: r,
@@ -160,6 +219,45 @@ export function MatrixTable({
                             )}
                           >
                             <Check className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground/20">·</span>
+                        )}
+                      </td>
+                    );
+                  }),
+                )}
+                {resourceGroups.flatMap((g, gi) =>
+                  g.resources.map((r, i) => {
+                    const cell = resourceCells[p.id]?.[r.id];
+                    const isFirst = gi === 0 && i === 0;
+                    return (
+                      <td
+                        key={r.id}
+                        className={cn(
+                          "border-b px-2 py-1.5 text-center",
+                          isFirst ? dividerClass : i === 0 && "border-l",
+                        )}
+                      >
+                        {cell ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelected({
+                                kind: "resource",
+                                person: p,
+                                typeLabel: g.label,
+                                resource: r,
+                                cell,
+                              })
+                            }
+                            aria-label={`${p.firstName} ${p.lastName} – ${r.name}: ${expiryStatusLabel[cell.status]}`}
+                            className={cn(
+                              "mx-auto flex h-6 w-6 items-center justify-center rounded transition-transform hover:scale-110",
+                              dotClass[cell.status],
+                            )}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
                           </button>
                         ) : (
                           <span className="text-muted-foreground/20">·</span>
@@ -184,28 +282,57 @@ export function MatrixTable({
                 </DialogTitle>
               </DialogHeader>
               <dl className="space-y-3 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">System / rolle</dt>
-                  <dd className="text-right">
-                    {selected.systemName} / {selected.role.name}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Risiko</dt>
-                  <dd>
-                    <RiskBadge level={selected.role.riskLevel} />
-                  </dd>
-                </div>
+                {selected.kind === "role" ? (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-muted-foreground">System / rolle</dt>
+                      <dd className="text-right">
+                        {selected.systemName} / {selected.role.name}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-muted-foreground">Risiko</dt>
+                      <dd>
+                        <RiskBadge level={selected.role.riskLevel} />
+                      </dd>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-muted-foreground">Ressurs</dt>
+                      <dd className="text-right">
+                        {selected.typeLabel} / {selected.resource.name}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-muted-foreground">Metode</dt>
+                      <dd className="text-right">
+                        {selected.cell.methods.join(", ")}
+                      </dd>
+                    </div>
+                    {selected.resource.riskLevel && (
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-muted-foreground">Risiko</dt>
+                        <dd>
+                          <RiskBadge level={selected.resource.riskLevel} />
+                        </dd>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">Status</dt>
                   <dd className={expiryStatusClasses[selected.cell.status].text}>
                     {expiryStatusLabel[selected.cell.status]}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Kilde</dt>
-                  <dd>{assignmentSourceLabel[selected.cell.source]}</dd>
-                </div>
+                {selected.kind === "role" && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Kilde</dt>
+                    <dd>{assignmentSourceLabel[selected.cell.source]}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Tildelt</dt>
                   <dd>

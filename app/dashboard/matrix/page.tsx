@@ -4,18 +4,25 @@ import { MatrixTable } from "@/components/tables/matrix-table";
 import { ExportButtons } from "@/components/export/export-buttons";
 
 export default async function MatrixPage() {
-  const { systems, persons, cells } = await getMatrixData();
+  const { systems, persons, cells, resourceGroups, resourceCells } =
+    await getMatrixData();
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Tilgangsmatrise"
-        description="Personer mot roller, gruppert per system. Klikk en celle for detaljer."
+        description="Personer mot roller (per system) og fysiske ressurser. Klikk en celle for detaljer."
       >
         <ExportButtons />
       </PageHeader>
 
-      <MatrixTable systems={systems} persons={persons} cells={cells} />
+      <MatrixTable
+        systems={systems}
+        persons={persons}
+        cells={cells}
+        resourceGroups={resourceGroups}
+        resourceCells={resourceCells}
+      />
     </div>
   );
 }
