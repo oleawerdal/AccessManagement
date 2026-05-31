@@ -39,7 +39,13 @@ import {
 const NONE = "__none__";
 
 type TypeOption = { id: string; label: string };
-type RiskOption = { id: string; label: string };
+type RiskOption = {
+  id: string;
+  label: string;
+  description: string | null;
+  color: string;
+  severity: number;
+};
 type PersonOption = { id: string; firstName: string; lastName: string };
 
 const schema = z.object({
@@ -93,6 +99,8 @@ export function ResourceFormDialog({
       .then(setPersons)
       .catch(() => {});
   }, [open]);
+
+  const selectedRisk = risks.find((r) => r.id === form.watch("riskLevelId"));
 
   async function onSubmit(values: FormValues) {
     try {
@@ -191,11 +199,22 @@ export function ResourceFormDialog({
                         <SelectItem value={NONE}>Ingen</SelectItem>
                         {risks.map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.label}
+                            <span className="inline-flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: r.color }}
+                              />
+                              {r.label}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {selectedRisk?.description && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedRisk.description}
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
