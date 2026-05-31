@@ -57,6 +57,7 @@ export const entityTypeLabel: Record<string, string> = {
   AccessMethod: "Tilgangsmetode",
   Resource: "Ressurs",
   ResourceAccess: "Fysisk tilgang",
+  Credential: "Kort/nøkkel",
   AdminUser: "Adminbruker",
   ApiKey: "API-nøkkel",
   SmtpSettings: "SMTP-innstillinger",

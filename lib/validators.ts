@@ -141,10 +141,25 @@ export const resourceAccessCreateSchema = z.object({
   personId: z.string().min(1, "Person er påkrevd."),
   resourceId: z.string().min(1, "Ressurs er påkrevd."),
   methodId: z.string().min(1, "Tilgangsmetode er påkrevd."),
+  // Free-text card/key id (ad-hoc), or use personCredentialId to pick a
+  // credential already registered on the person.
   credentialId: optionalString,
+  personCredentialId: optionalRefId,
   expiresAt: optionalDate,
   notes: optionalString,
 });
+
+// Reusable credential (key card / fob / key) registered on a person.
+export const credentialCreateSchema = z.object({
+  personId: z.string().min(1, "Person er påkrevd."),
+  label: optionalString,
+  identifier: z.string().trim().min(1, "ID er påkrevd.").max(150),
+  methodId: optionalRefId,
+  active: z.boolean().default(true),
+});
+export const credentialUpdateSchema = credentialCreateSchema
+  .partial()
+  .omit({ personId: true });
 export type ResourceAccessInput = z.infer<typeof resourceAccessCreateSchema>;
 
 export const resourceAccessRenewSchema = z.object({

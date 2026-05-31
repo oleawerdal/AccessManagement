@@ -215,6 +215,13 @@ export async function getPersonWithAccess(id: string) {
         },
         orderBy: [{ resource: { name: "asc" } }, { grantedAt: "desc" }],
       },
+      credentials: {
+        include: {
+          method: { select: { label: true } },
+          _count: { select: { resourceAccesses: { where: { revokedAt: null } } } },
+        },
+        orderBy: [{ active: "desc" }, { identifier: "asc" }],
+      },
     },
   });
 }

@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       resourceId: data.resourceId,
       methodId: data.methodId,
       credentialId: data.credentialId,
+      personCredentialId: data.personCredentialId,
       expiresAt: data.expiresAt ?? null,
       notes: data.notes,
       grantedBy: session.user.email ?? undefined,

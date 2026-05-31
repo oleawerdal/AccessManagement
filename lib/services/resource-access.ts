@@ -32,10 +32,28 @@ export async function grantResourceAccess(input: {
   resourceId: string;
   methodId: string;
   credentialId?: string;
+  personCredentialId?: string | null;
   expiresAt?: Date | null;
   notes?: string;
   grantedBy?: string;
 }) {
+  // When a registered credential is selected, verify it belongs to the person
+  // and snapshot its identifier so the card/key number is shown consistently.
+  let credentialId = input.credentialId ?? null;
+  let personCredentialId = input.personCredentialId ?? null;
+  if (personCredentialId) {
+    const credential = await prisma.credential.findUnique({
+      where: { id: personCredentialId },
+    });
+    if (!credential || credential.personId !== input.personId) {
+      throw new Prisma.PrismaClientKnownRequestError(
+        "Valgt kort/nøkkel tilhører ikke denne personen.",
+        { code: "P2025", clientVersion: Prisma.prismaVersion.client },
+      );
+    }
+    credentialId = credential.identifier;
+  }
+
   const existing = await prisma.resourceAccess.findUnique({
     where: {
       personId_resourceId_methodId: {
@@ -57,7 +75,8 @@ export async function grantResourceAccess(input: {
     ? await prisma.resourceAccess.update({
         where: { id: existing.id },
         data: {
-          credentialId: input.credentialId ?? null,
+          credentialId,
+          personCredentialId,
           expiresAt: input.expiresAt ?? null,
           notes: input.notes,
           grantedBy: input.grantedBy,
@@ -76,7 +95,8 @@ export async function grantResourceAccess(input: {
           personId: input.personId,
           resourceId: input.resourceId,
           methodId: input.methodId,
-          credentialId: input.credentialId ?? null,
+          credentialId,
+          personCredentialId,
           expiresAt: input.expiresAt ?? null,
           notes: input.notes,
           grantedBy: input.grantedBy,

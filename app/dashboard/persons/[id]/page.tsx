@@ -13,6 +13,7 @@ import { AssignmentFormDialog } from "@/components/forms/assignment-form";
 import { ResourceAccessFormDialog } from "@/components/forms/resource-access-form";
 import { DeleteButton } from "@/components/common/delete-button";
 import { PersonGroups } from "@/components/persons/person-groups";
+import { PersonCredentials } from "@/components/persons/person-credentials";
 import { PersonAccessTable } from "@/components/tables/person-access-table";
 import {
   ResourceAccessTable,
@@ -161,6 +162,19 @@ export default async function PersonDetailPage({
         </CardHeader>
         <CardContent className="p-0">
           <PersonAccessTable assignments={person.assignments} canMutate={isAdmin} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Kort og nøkler</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PersonCredentials
+            personId={person.id}
+            credentials={person.credentials}
+            canMutate={isAdmin}
+          />
         </CardContent>
       </Card>
 

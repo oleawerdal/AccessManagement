@@ -383,7 +383,12 @@ async function main() {
     personId: string,
     resourceId: string,
     methodLabel: string,
-    opts: { credentialId?: string; expiresAt?: Date | null; notes?: string } = {},
+    opts: {
+      credentialId?: string;
+      personCredentialId?: string;
+      expiresAt?: Date | null;
+      notes?: string;
+    } = {},
   ) => {
     const methodId = accessMethodId[methodLabel];
     await prisma.resourceAccess.upsert({
@@ -396,6 +401,7 @@ async function main() {
         resourceId,
         methodId,
         credentialId: opts.credentialId,
+        personCredentialId: opts.personCredentialId,
         expiresAt: opts.expiresAt ?? null,
         notes: opts.notes,
         grantedBy: "seed",
@@ -403,9 +409,23 @@ async function main() {
     });
   };
 
-  // Kari: permanent keycard to the front door.
+  // Kari has one reusable employee key card (ABC123) registered on her, used
+  // for the front door — and reusable for other keycard resources later.
+  const kariCard = await prisma.credential.upsert({
+    where: { personId_identifier: { personId: kari.id, identifier: "ABC123" } },
+    update: {},
+    create: {
+      personId: kari.id,
+      identifier: "ABC123",
+      label: "Ansattkort",
+      methodId: accessMethodId["Nøkkelkort"],
+    },
+  });
+
+  // Kari: permanent keycard access to the front door, using the registered card.
   await grantResource(kari.id, frontDoor.id, "Nøkkelkort", {
-    credentialId: "KORT-1001",
+    credentialId: kariCard.identifier,
+    personCredentialId: kariCard.id,
     notes: "Fast ansatt – generell adgang.",
   });
   // Per: physical key to the server room (critical), permanent.

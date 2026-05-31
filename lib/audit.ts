@@ -29,6 +29,7 @@ const AUDITED_MODELS = new Set([
   "ResourceType",
   "AccessMethod",
   "Resource",
+  "Credential",
 ]);
 
 const SINGLE_WRITE_OPS = new Set(["create", "update", "delete", "upsert"]);
@@ -64,6 +65,8 @@ export function entityLabel(model: string, record: unknown): string | undefined 
     case "ResourceType":
     case "AccessMethod":
       return String(r.label ?? r.id ?? "");
+    case "Credential":
+      return [r.label, r.identifier].filter(Boolean).join(" · ") || String(r.id ?? "");
     default:
       return r.id ? String(r.id) : undefined;
   }

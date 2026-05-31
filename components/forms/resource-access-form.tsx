@@ -27,6 +27,14 @@ import {
 type ResourceOption = { id: string; name: string; type: { label: string } };
 type PersonOption = { id: string; firstName: string; lastName: string };
 type MethodOption = { id: string; label: string; requiresCredential: boolean };
+type CredentialOption = {
+  id: string;
+  label: string | null;
+  identifier: string;
+  methodId: string | null;
+};
+
+const NEW_CRED = "__new__";
 
 export function ResourceAccessFormDialog({
   personId,
@@ -46,7 +54,10 @@ export function ResourceAccessFormDialog({
   const [selectedPerson, setSelectedPerson] = useState(personId ?? "");
   const [selectedResource, setSelectedResource] = useState(resourceId ?? "");
   const [methodId, setMethodId] = useState("");
-  const [credentialId, setCredentialId] = useState("");
+  const [credentials, setCredentials] = useState<CredentialOption[]>([]);
+  const [credChoice, setCredChoice] = useState("");
+  const [newIdentifier, setNewIdentifier] = useState("");
+  const [newLabel, setNewLabel] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
@@ -66,28 +77,72 @@ export function ResourceAccessFormDialog({
     }
   }, [open, personId, resourceId]);
 
+  // Load the selected person's registered credentials so they can be reused.
+  useEffect(() => {
+    if (!open || !selectedPerson) {
+      setCredentials([]);
+      return;
+    }
+    apiRequest<CredentialOption[]>(`/api/credentials?personId=${selectedPerson}`)
+      .then(setCredentials)
+      .catch(() => {});
+    setCredChoice("");
+  }, [open, selectedPerson]);
+
   const selectedMethod = methods.find((m) => m.id === methodId);
+  // Credentials relevant for the chosen method (untyped ones always shown).
+  const methodCredentials = credentials.filter(
+    (c) => !selectedMethod || c.methodId == null || c.methodId === selectedMethod.id,
+  );
+  const enteringNewCred =
+    credChoice === NEW_CRED || methodCredentials.length === 0;
+
+  function resetFields() {
+    setMethodId("");
+    setCredChoice("");
+    setNewIdentifier("");
+    setNewLabel("");
+    setExpiresAt("");
+    setNotes("");
+  }
 
   async function onSubmit() {
     setPending(true);
     try {
+      // Resolve the credential: pick a registered one, or register a new one on
+      // the person (idempotent) so it can be reused on other resources later.
+      let personCredentialId: string | undefined;
+      if (selectedMethod?.requiresCredential) {
+        if (credChoice && credChoice !== NEW_CRED) {
+          personCredentialId = credChoice;
+        } else if (newIdentifier.trim()) {
+          const cred = await apiRequest<{ id: string }>("/api/credentials", {
+            method: "POST",
+            body: {
+              personId: selectedPerson,
+              identifier: newIdentifier.trim(),
+              label: newLabel || undefined,
+              methodId: selectedMethod.id,
+            },
+          });
+          personCredentialId = cred.id;
+        }
+      }
+
       await apiRequest("/api/resource-access", {
         method: "POST",
         body: {
           personId: selectedPerson,
           resourceId: selectedResource,
           methodId,
-          credentialId: credentialId || undefined,
+          personCredentialId,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
           notes: notes || undefined,
         },
       });
       toast({ title: "Tilgang gitt." });
       setOpen(false);
-      setMethodId("");
-      setCredentialId("");
-      setExpiresAt("");
-      setNotes("");
+      resetFields();
       router.refresh();
     } catch (err) {
       toast({
@@ -161,13 +216,42 @@ export function ResourceAccessFormDialog({
           </div>
           {selectedMethod?.requiresCredential && (
             <div className="space-y-2">
-              <Label htmlFor="ra-credential">Kort-/nøkkelnummer</Label>
-              <Input
-                id="ra-credential"
-                value={credentialId}
-                onChange={(e) => setCredentialId(e.target.value)}
-                placeholder="ID på utlevert kort/nøkkel"
-              />
+              <Label>Kort/nøkkel</Label>
+              {methodCredentials.length > 0 && (
+                <Select value={credChoice} onValueChange={setCredChoice}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Velg registrert kort/nøkkel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {methodCredentials.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.identifier}
+                        {c.label ? ` · ${c.label}` : ""}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={NEW_CRED}>+ Nytt kort/nøkkel…</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {enteringNewCred && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={newIdentifier}
+                    onChange={(e) => setNewIdentifier(e.target.value)}
+                    placeholder="ID, f.eks. ABC123"
+                  />
+                  <Input
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder="Navn (valgfritt)"
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {selectedPerson
+                  ? "Registrerte kort/nøkler hentes fra personen. Nye lagres på personen for gjenbruk."
+                  : "Velg person først for å hente registrerte kort/nøkler."}
+              </p>
             </div>
           )}
           <div className="space-y-2">

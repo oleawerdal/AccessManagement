@@ -80,6 +80,7 @@ model Person {
   ownedSystems     System[]          @relation("SystemOwner")
   resourceAccesses ResourceAccess[]
   ownedResources   Resource[]        @relation("ResourceOwner")
+  credentials      Credential[]
 
   @@index([lastName, firstName])
   @@index([active])
@@ -242,7 +243,33 @@ model AccessMethod {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  accesses ResourceAccess[]
+  accesses    ResourceAccess[]
+  credentials Credential[]
+}
+
+// A reusable physical credential (key card, fob, key) belonging to a person.
+// Register it once with its identifier (e.g. "ABC123") and reuse it across many
+// resource accesses instead of re-typing the number each time. Optionally tied
+// to a specific access method (e.g. Nøkkelkort) to aid selection.
+model Credential {
+  id         String        @id @default(cuid())
+  personId   String
+  person     Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  // Human label, e.g. "Ansattkort". Optional; the identifier is what matters.
+  label      String?
+  identifier String
+  methodId   String?
+  method     AccessMethod? @relation(fields: [methodId], references: [id], onDelete: SetNull)
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  resourceAccesses ResourceAccess[]
+
+  // A person cannot have the same physical identifier registered twice.
+  @@unique([personId, identifier])
+  @@index([personId])
+  @@index([methodId])
 }
 
 // A physical thing that can be accessed.
@@ -283,7 +310,13 @@ model ResourceAccess {
   method       AccessMethod @relation(fields: [methodId], references: [id], onDelete: Restrict)
   // Identifier of the issued physical token (card/key number), when the method
   // requires one. Lets you know exactly which item to collect on offboarding.
+  // Snapshot value: filled from the linked Credential when one is selected, or
+  // typed ad-hoc. Kept even if the Credential is later changed/deleted.
   credentialId String?
+  // Optional link to a reusable Credential registered on the person, so the same
+  // card/key can be picked across many resources instead of re-typing the id.
+  personCredentialId String?
+  personCredential   Credential? @relation(fields: [personCredentialId], references: [id], onDelete: SetNull)
   grantedAt    DateTime     @default(now())
   grantedBy    String?
   expiresAt    DateTime?
@@ -308,6 +341,7 @@ model ResourceAccess {
   @@index([personId])
   @@index([resourceId])
   @@index([methodId])
+  @@index([personCredentialId])
 }
 
 // Machine-to-machine credentials for the external REST API (/api/v1). The full
