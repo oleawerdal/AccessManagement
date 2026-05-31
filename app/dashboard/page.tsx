@@ -7,6 +7,8 @@ import {
   KeyRound,
   AlertTriangle,
   ArrowRight,
+  DoorOpen,
+  IdCard,
 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
@@ -18,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { RiskBadge } from "@/components/badges/risk-badge";
 import { AssignmentActions } from "@/components/assignments/assignment-actions";
+import { ResourceAccessActions } from "@/components/resource-access/resource-access-actions";
 import {
   Card,
   CardContent,
@@ -70,27 +73,35 @@ export default async function DashboardPage() {
   const session = await auth();
   const isAdmin = canMutate(session?.user.role);
   const data = await getDashboardData();
+  const totalNeedsRevision =
+    data.needsRevisionCount + data.resourceNeedsRevisionCount;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Oversikt"
-        description="Status for dokumenterte systemtilganger."
+        description="Status for dokumenterte system- og ressurstilganger."
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Aktive personer" value={data.personCount} icon={Users} />
         <StatCard label="Systemer" value={data.systemCount} icon={Server} />
+        <StatCard label="Ressurser" value={data.resourceCount} icon={DoorOpen} />
         <StatCard
-          label="Aktive tilganger"
+          label="Aktive systemtilganger"
           value={data.activeAssignments}
           icon={KeyRound}
         />
         <StatCard
+          label="Aktive fysiske tilganger"
+          value={data.resourceAccessCount}
+          icon={IdCard}
+        />
+        <StatCard
           label="Krever revisjon"
-          value={data.needsRevisionCount}
+          value={totalNeedsRevision}
           icon={AlertTriangle}
-          tone={data.needsRevisionCount > 0 ? "danger" : "default"}
+          tone={totalNeedsRevision > 0 ? "danger" : "default"}
         />
       </div>
 
@@ -105,86 +116,188 @@ export default async function DashboardPage() {
               Utløpte tilganger som ennå ikke er revokert.
             </p>
           </div>
-          {data.expiringSoonCount > 0 && (
+          {data.expiringSoonCount + data.resourceExpiringSoonCount > 0 && (
             <span className="rounded-md bg-status-expiring/10 px-2 py-1 text-xs font-medium text-status-expiring">
-              {data.expiringSoonCount} utløper innen 30 dager
+              {data.expiringSoonCount + data.resourceExpiringSoonCount} utløper
+              innen 30 dager
             </span>
           )}
         </CardHeader>
         <CardContent className="p-0">
-          {data.revisionList.length === 0 ? (
+          {data.revisionList.length === 0 &&
+          data.resourceRevisionList.length === 0 ? (
             <div className="px-5 pb-6 pt-2 text-sm text-muted-foreground">
               Ingen tilganger krever revisjon nå.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Person</TableHead>
-                  <TableHead>System / rolle</TableHead>
-                  <TableHead>Risiko</TableHead>
-                  <TableHead>Utløp</TableHead>
-                  {isAdmin && <TableHead className="w-10" />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.revisionList.map((a) => {
-                  const days = daysUntilExpiry(a.expiresAt);
-                  return (
-                    <TableRow key={a.id}>
-                      <TableCell>
-                        <Link
-                          href={`/dashboard/persons/${a.personId}`}
-                          className="font-medium hover:underline"
-                        >
-                          {a.person.firstName} {a.person.lastName}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">
-                          {a.person.department ?? "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{a.role.system.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {a.role.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <RiskBadge level={a.role.riskLevel} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-status-expired">
-                          {a.expiresAt
-                            ? format(new Date(a.expiresAt), "dd.MM.yyyy", {
-                                locale: nb,
-                              })
-                            : "—"}
-                        </span>
-                        {days !== null && (
-                          <div className="text-xs text-muted-foreground">
-                            {Math.abs(days)} d. siden
-                          </div>
-                        )}
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell>
-                          <AssignmentActions
-                            assignment={{
-                              id: a.id,
-                              expiresAt: a.expiresAt
-                                ? a.expiresAt.toISOString()
-                                : null,
-                              revokedAt: null,
-                            }}
-                            showReview
-                          />
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="space-y-1">
+              {data.revisionList.length > 0 && (
+                <>
+                  <div className="px-5 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Systemtilganger
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Person</TableHead>
+                        <TableHead>System / rolle</TableHead>
+                        <TableHead>Risiko</TableHead>
+                        <TableHead>Utløp</TableHead>
+                        {isAdmin && <TableHead className="w-10" />}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.revisionList.map((a) => {
+                        const days = daysUntilExpiry(a.expiresAt);
+                        return (
+                          <TableRow key={a.id}>
+                            <TableCell>
+                              <Link
+                                href={`/dashboard/persons/${a.personId}`}
+                                className="font-medium hover:underline"
+                              >
+                                {a.person.firstName} {a.person.lastName}
+                              </Link>
+                              <div className="text-xs text-muted-foreground">
+                                {a.person.department ?? "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {a.role.system.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {a.role.name}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <RiskBadge level={a.role.riskLevel} />
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-status-expired">
+                                {a.expiresAt
+                                  ? format(new Date(a.expiresAt), "dd.MM.yyyy", {
+                                      locale: nb,
+                                    })
+                                  : "—"}
+                              </span>
+                              {days !== null && (
+                                <div className="text-xs text-muted-foreground">
+                                  {Math.abs(days)} d. siden
+                                </div>
+                              )}
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell>
+                                <AssignmentActions
+                                  assignment={{
+                                    id: a.id,
+                                    expiresAt: a.expiresAt
+                                      ? a.expiresAt.toISOString()
+                                      : null,
+                                    revokedAt: null,
+                                  }}
+                                  showReview
+                                />
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+
+              {data.resourceRevisionList.length > 0 && (
+                <>
+                  <div className="px-5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Fysiske tilganger
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Person</TableHead>
+                        <TableHead>Ressurs / metode</TableHead>
+                        <TableHead>Risiko</TableHead>
+                        <TableHead>Utløp</TableHead>
+                        {isAdmin && <TableHead className="w-10" />}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.resourceRevisionList.map((a) => {
+                        const days = daysUntilExpiry(a.expiresAt);
+                        return (
+                          <TableRow key={a.id}>
+                            <TableCell>
+                              <Link
+                                href={`/dashboard/persons/${a.personId}`}
+                                className="font-medium hover:underline"
+                              >
+                                {a.person.firstName} {a.person.lastName}
+                              </Link>
+                              <div className="text-xs text-muted-foreground">
+                                {a.person.department ?? "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Link
+                                href={`/dashboard/resources/${a.resourceId}`}
+                                className="font-medium hover:underline"
+                              >
+                                {a.resource.name}
+                              </Link>
+                              <div className="text-xs text-muted-foreground">
+                                {a.resource.type.label} · {a.method.label}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {a.resource.riskLevel ? (
+                                <RiskBadge level={a.resource.riskLevel} />
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-status-expired">
+                                {a.expiresAt
+                                  ? format(new Date(a.expiresAt), "dd.MM.yyyy", {
+                                      locale: nb,
+                                    })
+                                  : "—"}
+                              </span>
+                              {days !== null && (
+                                <div className="text-xs text-muted-foreground">
+                                  {Math.abs(days)} d. siden
+                                </div>
+                              )}
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell>
+                                <ResourceAccessActions
+                                  access={{
+                                    id: a.id,
+                                    expiresAt: a.expiresAt
+                                      ? a.expiresAt.toISOString()
+                                      : null,
+                                    revokedAt: null,
+                                    hasCredential: Boolean(
+                                      a.method.requiresCredential ||
+                                        a.credentialId,
+                                    ),
+                                    credentialReturned: a.credentialReturned,
+                                  }}
+                                />
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

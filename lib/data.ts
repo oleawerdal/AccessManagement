@@ -25,6 +25,11 @@ export async function getDashboardData() {
     expiringSoonCount,
     revisionList,
     recentAudit,
+    resourceCount,
+    resourceAccessCount,
+    resourceNeedsRevisionCount,
+    resourceExpiringSoonCount,
+    resourceRevisionList,
   ] = await Promise.all([
     prisma.person.count({ where: { active: true } }),
     prisma.system.count({ where: { active: true } }),
@@ -47,6 +52,28 @@ export async function getDashboardData() {
       orderBy: { timestamp: "desc" },
       take: 6,
     }),
+    prisma.resource.count({ where: { active: true } }),
+    prisma.resourceAccess.count({
+      where: {
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    }),
+    prisma.resourceAccess.count({
+      where: { revokedAt: null, expiresAt: { lt: now } },
+    }),
+    prisma.resourceAccess.count({
+      where: { revokedAt: null, expiresAt: { gte: now, lte: soon } },
+    }),
+    prisma.resourceAccess.findMany({
+      where: { revokedAt: null, expiresAt: { lt: now } },
+      include: {
+        person: true,
+        resource: { include: { type: true, riskLevel: true } },
+        method: true,
+      },
+      orderBy: { expiresAt: "asc" },
+    }),
   ]);
 
   return {
@@ -57,6 +84,11 @@ export async function getDashboardData() {
     expiringSoonCount,
     revisionList,
     recentAudit,
+    resourceCount,
+    resourceAccessCount,
+    resourceNeedsRevisionCount,
+    resourceExpiringSoonCount,
+    resourceRevisionList,
   };
 }
 

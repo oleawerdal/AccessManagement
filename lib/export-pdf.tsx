@@ -51,9 +51,16 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontFamily: "Helvetica-Bold", color: COLORS.primaryDark },
   subtitle: { fontSize: 9, color: COLORS.muted, marginTop: 2 },
-  summaryRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  summaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 20,
+  },
   summaryBox: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "30%",
+    minWidth: 120,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 4,
@@ -110,8 +117,13 @@ function Summary({ data }: { data: ExportData }) {
   const tiles = [
     { label: "Personer", value: data.summary.persons },
     { label: "Systemer", value: data.summary.systems },
-    { label: "Aktive tilganger", value: data.summary.activeAssignments },
-    { label: "Krever revisjon", value: data.summary.needsRevision },
+    { label: "Ressurser", value: data.summary.resources },
+    { label: "Systemtilganger", value: data.summary.activeAssignments },
+    { label: "Fysiske tilganger", value: data.summary.resourceAccesses },
+    {
+      label: "Krever revisjon",
+      value: data.summary.needsRevision + data.summary.resourceNeedsRevision,
+    },
   ];
   return (
     <View style={styles.summaryRow}>
@@ -236,6 +248,63 @@ function PerPersonSection({ data }: { data: ExportData }) {
   );
 }
 
+function PerResourceSection({ data }: { data: ExportData }) {
+  return (
+    <View break>
+      <Text style={styles.sectionTitle}>Tilganger per ressurs</Text>
+      {data.resources.length === 0 ? (
+        <Text style={[styles.muted, { paddingHorizontal: 4 }]}>
+          Ingen ressurser registrert.
+        </Text>
+      ) : (
+        data.resources.map((r) => (
+          <View key={r.id} wrap={false}>
+            <Text style={styles.subHeading}>
+              {r.name}
+              <Text style={styles.muted}>
+                {"  "}
+                {r.typeLabel}
+                {r.riskLevel ? ` · ${r.riskLevel}` : ""}
+              </Text>
+            </Text>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.cellHeader, { width: "32%" }]}>Person</Text>
+              <Text style={[styles.cellHeader, { width: "22%" }]}>Metode</Text>
+              <Text style={[styles.cellHeader, { width: "21%" }]}>Kort/nøkkel</Text>
+              <Text style={[styles.cellHeader, { width: "13%" }]}>Status</Text>
+              <Text style={[styles.cellHeader, { width: "12%" }]}>Utløp</Text>
+            </View>
+            {r.people.length === 0 ? (
+              <View style={styles.row}>
+                <Text style={[{ width: "100%" }, styles.muted]}>
+                  Ingen tilganger
+                </Text>
+              </View>
+            ) : (
+              r.people.map((person, i) => (
+                <View
+                  key={`${r.id}-${person.name}-${person.method}`}
+                  style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]}
+                >
+                  <Text style={{ width: "32%" }}>{person.name}</Text>
+                  <Text style={{ width: "22%" }}>{person.method}</Text>
+                  <Text style={{ width: "21%" }}>{person.credentialId ?? "—"}</Text>
+                  <Text
+                    style={[{ width: "13%" }, { color: statusColor[person.status] }]}
+                  >
+                    {expiryStatusLabel[person.status]}
+                  </Text>
+                  <Text style={{ width: "12%" }}>{fmtDate(person.expiresAt)}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
 function ReportDocument({ data }: { data: ExportData }) {
   const dateStr = format(data.generatedAt, "PPP 'kl.' HH:mm", { locale: nb });
   return (
@@ -244,7 +313,9 @@ function ReportDocument({ data }: { data: ExportData }) {
         <View style={styles.header} fixed>
           <View>
             <Text style={styles.title}>Tilgangsstyring</Text>
-            <Text style={styles.subtitle}>Rapport over systemtilganger</Text>
+            <Text style={styles.subtitle}>
+              Rapport over system- og ressurstilganger
+            </Text>
           </View>
           <Text style={styles.subtitle}>Generert {dateStr}</Text>
         </View>
@@ -252,6 +323,7 @@ function ReportDocument({ data }: { data: ExportData }) {
         <Summary data={data} />
         <PerSystemSection data={data} />
         <PerPersonSection data={data} />
+        <PerResourceSection data={data} />
 
         <View style={styles.footer} fixed>
           <Text>Tilgangsstyring – internt og konfidensielt</Text>

@@ -166,6 +166,125 @@ export async function buildExcel(data: ExportData): Promise<Buffer> {
   }
   autoWidth(perSystem);
 
+  // --- Sheet: Ressursmatrise ------------------------------------------------
+  const resourceMatrix = wb.addWorksheet("Ressursmatrise", {
+    views: [{ state: "frozen", xSplit: 1, ySplit: 1 }],
+  });
+  const resourceCols = data.resources.map((r) => ({
+    id: r.id,
+    label: `${r.typeLabel} – ${r.name}`,
+  }));
+  resourceMatrix.columns = [
+    { header: "Person", key: "person", width: 28 },
+    ...resourceCols.map((c) => ({ header: c.label, key: c.id, width: 16 })),
+  ];
+  styleHeader(resourceMatrix.getRow(1));
+  for (const p of data.persons) {
+    const row = resourceMatrix.addRow({ person: p.name });
+    resourceCols.forEach((c) => {
+      const status = data.resourceMatrix[p.id]?.[c.id];
+      const xlCell = row.getCell(c.id);
+      if (status) {
+        xlCell.value = "✓";
+        xlCell.alignment = { horizontal: "center" };
+        xlCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: STATUS_FILL[status] },
+        };
+      }
+    });
+  }
+
+  // --- Sheet: Ressurser per person ------------------------------------------
+  const resPerPerson = wb.addWorksheet("Ressurser per person", {
+    views: [{ state: "frozen", ySplit: 1 }],
+  });
+  resPerPerson.columns = [
+    { header: "Person", key: "person" },
+    { header: "E-post", key: "email" },
+    { header: "Avdeling", key: "department" },
+    { header: "Ressurs", key: "resource" },
+    { header: "Type", key: "type" },
+    { header: "Metode", key: "method" },
+    { header: "Kort/nøkkel", key: "credential" },
+    { header: "Risiko", key: "risk" },
+    { header: "Status", key: "status" },
+    { header: "Utløp", key: "expires" },
+  ];
+  styleHeader(resPerPerson.getRow(1));
+  for (const p of data.persons) {
+    if (p.resourceAccesses.length === 0) continue;
+    for (const a of p.resourceAccesses) {
+      const row = resPerPerson.addRow({
+        person: p.name,
+        email: p.email,
+        department: p.department ?? "",
+        resource: a.resourceName,
+        type: a.typeLabel,
+        method: a.method,
+        credential: a.credentialId ?? "",
+        risk: a.riskLevel ?? "",
+        status: expiryStatusLabel[a.status],
+        expires: fmtDate(a.expiresAt),
+      });
+      row.getCell("status").fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: STATUS_FILL[a.status] },
+      };
+    }
+  }
+  autoWidth(resPerPerson);
+
+  // --- Sheet: Per ressurs ---------------------------------------------------
+  const perResource = wb.addWorksheet("Per ressurs", {
+    views: [{ state: "frozen", ySplit: 1 }],
+  });
+  perResource.columns = [
+    { header: "Ressurs", key: "resource" },
+    { header: "Type", key: "type" },
+    { header: "Risiko", key: "risk" },
+    { header: "Plassering", key: "location" },
+    { header: "Person", key: "person" },
+    { header: "Metode", key: "method" },
+    { header: "Kort/nøkkel", key: "credential" },
+    { header: "Status", key: "status" },
+    { header: "Utløp", key: "expires" },
+  ];
+  styleHeader(perResource.getRow(1));
+  for (const r of data.resources) {
+    if (r.people.length === 0) {
+      perResource.addRow({
+        resource: r.name,
+        type: r.typeLabel,
+        risk: r.riskLevel ?? "",
+        location: r.location ?? "",
+        person: "(ingen)",
+      });
+      continue;
+    }
+    for (const person of r.people) {
+      const row = perResource.addRow({
+        resource: r.name,
+        type: r.typeLabel,
+        risk: r.riskLevel ?? "",
+        location: r.location ?? "",
+        person: person.name,
+        method: person.method,
+        credential: person.credentialId ?? "",
+        status: expiryStatusLabel[person.status],
+        expires: fmtDate(person.expiresAt),
+      });
+      row.getCell("status").fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: STATUS_FILL[person.status] },
+      };
+    }
+  }
+  autoWidth(perResource);
+
   // --- Sheet 4: Audit -------------------------------------------------------
   const auditSheet = wb.addWorksheet("Audit", {
     views: [{ state: "frozen", ySplit: 1 }],
